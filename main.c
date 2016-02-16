@@ -1,5 +1,6 @@
 #include "errors.h"
 #include "parse.h" // next_token
+#include <time.h>
 
 void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) {
   dest->tv_sec += a->tv_sec + b->tv_sec;
@@ -16,8 +17,6 @@ void timespecsub(struct timespec* dest, struct timespec* a, struct timespec* b) 
   dest->tv_nsec = a->tv_nsec + (needborrow ? 1000000000 : 0) - b->tv_nsec; 
 }
 
-short mdays[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-
 void parse_interval(struct timespec* dest,
 					struct timespec* base,
 					const char* s,
@@ -28,32 +27,24 @@ void parse_interval(struct timespec* dest,
   };
   struct timespec nextint;
   while(next_token(&ctx)) {
-	if(ctx->state == SEEKNUM) {
+	if(ctx.state == SEEKNUM) {
 	  float seconds;
-	  switch(ctx->unit) {
+	  switch(ctx.unit) {
 	  case SECONDS:
-		seconds = ctx->quantity;
+		seconds = ctx.quantity;
 		continue;
 	  case MINUTES:
-		seconds = ctx->quantity * 60;
+		seconds = ctx.quantity * 60;
 		continue;
 	  case HOURS:
-		seconds = ctx->quantity * 60 * 60;
+		seconds = ctx.quantity * 60 * 60;
 		continue;
 	  case DAYS:
-		seconds = ctx->quantity * 60 * 60 * 24;
+		seconds = ctx.quantity * 60 * 60 * 24;
 		continue;
 	  case MONTHS:
 		{
-		  int curmonth = localtime(&base->tv_sec).tm_mon;
-		  // TODO: if tm_year is a leap year, mdays[1] = 29
-		  // TODO: if tm_year has leap seconds, add them on rollover 11-0
-		  while(ctx->quantity >= 1.0) {
-			seconds += 60 * 60 * 24 * mdays[curmonth];
-			curmonth = (curmonth + 1) % 12;
-		  }
-		  // final bit of the last month
-		  seconds += 60 * 60 * 24 * mdays[curmonth] * ctx->quantity;
+
 		}
 		continue;
 	  case YEARS:
@@ -62,7 +53,7 @@ void parse_interval(struct timespec* dest,
 		seconds += 60 * 60 * 24 * 365;
 		continue;
 	  default:
-		error("whoops the programmer forgot to account for a unit %d",ctx->unit);		
+		error("whoops the programmer forgot to account for a unit %d",ctx.unit);		
 	  };	  
 	}
   }

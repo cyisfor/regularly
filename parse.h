@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-struct parse_ctx {
-  enum { SECONDS, HOURS, MINUTES, DAYS, MONTHS, YEARS } unit;
+struct parser {
+  enum time_unit unit;
   float quantity;
   enum { SEEKNUM, FINISHNUM, SEEKUNIT, FINISHUNIT } state;
   const char* s;
@@ -12,5 +12,5 @@ struct parse_ctx {
   bool gotdot;
 };
 
-bool next_token(struct parse_ctx* ctx);
+bool next_token(struct parser* ctx);
 

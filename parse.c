@@ -8,7 +8,7 @@ bool unimportant(char c) {
   return c == ',' || isspace(c);
 }
 
-bool next_token(struct parse_ctx* ctx) {
+bool next_token(struct parser* ctx) {
   ssize_t i;
 
   for(i=ctx->start+ctx->tokenlen;i<ctx->len;++i) {
