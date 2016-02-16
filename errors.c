@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <stdlib.h>
 
 void error(const char* s, ...) {
   va_list args;

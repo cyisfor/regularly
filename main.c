@@ -1,4 +1,4 @@
-#include "error.h"
+#include "errors.h"
 #include "parse.h" // next_token
 
 void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) {
@@ -73,9 +73,15 @@ void parse_interval(struct timespec* dest,
   }
   timespecadd(dest,dest,&interval);
 }
+
+struct rule {
+  struct timespec interval;
+  struct timespec due;
+  char* command;
+  ssize_t command_length;
+  
 		
-		
-struct rules* parse(struct rules* ret, size_t* space) {
+struct rule* parse(struct rule* ret, size_t* space) {
   int fd = open("rules", O_RDONLY);
   if(fd < 0) exit(4);
   struct stat buf;
@@ -90,7 +96,7 @@ struct rules* parse(struct rules* ret, size_t* space) {
 	if(which%(1<<8)==0) {
 	  /* faster to allocate in chunks */
 	  size_t old = *space;
-	  *space += (((which>>8+1)<<8)*sizeof(struct rules));
+	  *space += (((which>>8+1)<<8)*sizeof(struct rule));
 	  ret = realloc(ret,*space);
 	  memset(ret+old,0,*space-old);
 	}
@@ -112,13 +118,16 @@ struct rules* parse(struct rules* ret, size_t* space) {
 	  if(s[i] == '\n')
 		break;
 	}
-	ret[which].command = realloc(ret[which].command,i-start);
+	ret[which].command = realloc(ret[which].command,i-start+1);
 	memcpy(ret[which].command,s+start,i-start);
+	if(i-start>1)
+	  assert(ret[which].command[i-start-1] != '\n');
+	ret[which].command[i-start] = '\0';
 	++which;
   }
  DONE:
   // now we don't need the trailing chunk
-  *space = which*sizeof(struct rules);
+  *space = which*sizeof(struct rule);
   ret = realloc(ret,*space);
   return ret;
 }
@@ -137,7 +146,7 @@ int main(int argc, char *argv[])
   assert_zero(chdir("regularly"));
   int ino = inotify_init();
   inotify_add_watch(ino,".",IN_MOVED_TO|IN_CLOSE_WRITE);
-  struct rules* r = NULL;
+  struct rule* r = NULL;
   size_t space = 0;
   struct timespec now;
   for(;;) {
@@ -145,7 +154,7 @@ int main(int argc, char *argv[])
 	r = parse(r,&space);
 	if(r) {
 	  for(;;) {
-		struct rules* cur = find_next(r);
+		struct rule* cur = find_next(r);
 		RECALCULATE:
 		clock_gettime(CLOCK_MONOTONIC,&now);
 		if(cur->due.tv_sec <= now.tv_sec &&
@@ -154,9 +163,9 @@ int main(int argc, char *argv[])
 		RUN_IT:
 		  res = system(cur->command);
 		  if(!WIFEXITED(res) || 0 != WEXITSTATUS(res)) {
-			printf("%s exited with %d\n",cur->command,res);
+			warn("%s exited with %d\n",cur->command,res);
 			if(--cur->retries == 0) {
-			  puts("disabling\n");
+			  warn("disabling");
 			  cur->disabled = true;
 			}
 		  }
@@ -200,7 +209,7 @@ int main(int argc, char *argv[])
 		}
 	  }
 	} else {
-	  puts("Couldn't find any rules!");
+	  warn("Couldn't find any rules!");
 	  left.tv_sec = 10;
 	  left.tv_nsec = 0;
 	  goto WAIT_AGAIN;

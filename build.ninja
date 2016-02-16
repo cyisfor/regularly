@@ -4,7 +4,10 @@ rule program
   command = gcc $cflags -o $out $in $ldflags
 rule object
   command = gcc $cflags -c -o $out $in
-build test_parse: program test_parse.o parse.o
+build test_parse: program test_parse.o parse.o errors.o
+build regularly: program main.o parse.o errors.o 
 build parse.o: object parse.c
 build test_parse.o: object test_parse.c
-default test_parse
+build main.o: object main.c
+build errors.o: object errors.c
+

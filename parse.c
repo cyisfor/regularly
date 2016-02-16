@@ -1,4 +1,5 @@
 #include "parse.h"
+#include "errors.h"
 #include <ctype.h> // isspace
 #include <string.h> // strcmp
 #define AT_END (i == ctx->len)
@@ -6,8 +7,6 @@
 bool unimportant(char c) {
   return c == ',' || isspace(c);
 }
-
-void error(const char* s, ...);
 
 bool next_token(struct parse_ctx* ctx) {
   ssize_t i;
