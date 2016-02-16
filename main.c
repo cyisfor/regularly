@@ -26,19 +26,13 @@ void parse_interval(struct timespec* dest,
 	.len = len,
   };
   struct timespec nextint;
+  //TODO: allow setting the base time that interval is calculated from?
+  clock_gettime(CLOCK_REALTIME,&nextint);
   while(next_token(&ctx)) {
 	if(ctx.state == SEEKNUM) {
-	  advance_time
-
-	  };	  
+	  advance_time(&nextint,ctx.unit,ctx.interval);
 	}
   }
-
-  struct timespec interval = {
-	.tv_sec = seconds,
-	.tv_nsec = 1000000000*(seconds-((int)seconds));
-  }
-  timespecadd(dest,dest,&interval);
 }
 
 struct rule {
