@@ -28,32 +28,8 @@ void parse_interval(struct timespec* dest,
   struct timespec nextint;
   while(next_token(&ctx)) {
 	if(ctx.state == SEEKNUM) {
-	  float seconds;
-	  switch(ctx.unit) {
-	  case SECONDS:
-		seconds = ctx.quantity;
-		continue;
-	  case MINUTES:
-		seconds = ctx.quantity * 60;
-		continue;
-	  case HOURS:
-		seconds = ctx.quantity * 60 * 60;
-		continue;
-	  case DAYS:
-		seconds = ctx.quantity * 60 * 60 * 24;
-		continue;
-	  case MONTHS:
-		{
+	  advance_time
 
-		}
-		continue;
-	  case YEARS:
-		// TODO: if tm_year is a leap year, 366
-		// TODO: if tm_year has leap seconds, add them too
-		seconds += 60 * 60 * 24 * 365;
-		continue;
-	  default:
-		error("whoops the programmer forgot to account for a unit %d",ctx.unit);		
 	  };	  
 	}
   }
