@@ -1,3 +1,4 @@
+#include "error.h"
 #include "parse.h" // next_token
 
 void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) {
@@ -99,8 +100,8 @@ struct rules* parse(struct rules* ret, size_t* space) {
 	  if(s[i] == '\n')
 		break;
 	  if(++i == buf.st_size) {
-		puts("junk trailer");
-		return ret;
+		warn("junk trailer %s\n",s+start);
+		goto DONE;
 	  }
 	}	  
 	parse_interval(s+start,i-start,&ret[which].interval);
@@ -115,104 +116,25 @@ struct rules* parse(struct rules* ret, size_t* space) {
 	memcpy(ret[which].command,s+start,i-start);
 	++which;
   }
+ DONE:
   // now we don't need the trailing chunk
   *space = which*sizeof(struct rules);
   ret = realloc(ret,*space);
   return ret;
 }
 
-struct {
-  pthread_mutex_t lock;
-  int pid;
-  int status;
-  bool fail;
-  int input;
-  int output;
-  bool pending;
-} sh = {
-  .pid = -1,
-  .lock = PTHREAD_MUTEX_INITIALIZER,
-  .fail = true
-};
-
-void onchild(int signal, siginfo_t* info, void* udata) {
-  assert(signal==SIGCHLD);
-  int died;
-  int status;
-  int old_errno = errno;
-  const struct timespec delay = { 0, 1000000 };
-  
-  for(;;) {
-	errno = 0;
-	died = waitpid(WAIT_ANY, &status, WNOHANG | WUNTRACED);
-	if(pid > 0) {
-	  pthread_mutex_lock(&sh.lock);
-	  if (pid == sh.pid) {
-		close(sh.input);
-		close(sh.output);
-		sh.status = status;
-		sh.fail = true;
-		pthread_mutex_unlock(&sh.lock);
-		return;
-	  }
-	  pthread_mutex_unlock(&sh.lock);
-	  continue;
-	}
-	if(errno != EINTR) {
-	  errno = old_errno;		  
-	  return;
-	}
-	clock_nanosleep(CLOCK_MONOTONIC, &delay, NULL);
-  }
+void onchild(int signal) {
+  return;
 }
 
-const char* shell = "/bin/sh";
-  
-void startsh(bool dolock = true) {
-  if(dolock)
-	pthread_mutex_lock(&sh.lock);
-  assert(sh.fail == true);
-  int down[2];
-  int up[2];
-  pipe(down);
-  pipe(up);
-  sh.output = down[1];
-  sh.input = up[0];
-  sh.pid = fork();
-  if(sh.pid == 0) {
-	dup2(down[0],0);
-	dup2(up[1],1);
-	// cloexec takes care of the extra pipe fds
-	execlp(shell,shell,NULL);
-	exit(23);
-  }
-  assert(sh.pid > 0);
-  if(dolock)
-	pthread_mutex_unlock(&sh.lock);
-  close(down[0]);
-  close(up[1]);
-}
-
-void sendsh(const char* command, size_t len) {
-  pthread_mutex_lock(&sh.lock);
-  if(sh.fail) {
-	startsh(false);
-  }
-  ssize_t amt = write(sh.pid,command,len);
-  assert_equal(amt, len);
-  amt = write(sh.pid,"\necho _SENTINEL_THING");
-  assert_equal(amt, sizeof("\necho _SENTINEL_THING")-1);
-  sh.pending = true;
-  pthread_mutex_unlock(&sh.lock);
-}  
 
 int main(int argc, char *argv[])
 {
   struct passwd* me = getpwuid(getuid());
-  chdir(me->pw_dir) && exit(1);
-  chdir(".config") && exit(2);
+  assert_zero(chdir(me->pw_dir));
+  assert_zero(chdir(".config"));
   mkdir("regularly");
-  chdir("regularly") && exit(3);
+  assert_zero(chdir("regularly"));
   int ino = inotify_init();
   inotify_add_watch(ino,".",IN_MOVED_TO|IN_CLOSE_WRITE);
   struct rules* r = NULL;
@@ -241,27 +163,23 @@ int main(int argc, char *argv[])
 		  timespecadd(&cur->due,&cur->interval,&now);
 		} else {
 		  struct timespec left;
-		  timespecsub(&left, &now, &cur->due);
-		  pthread_mutex_lock(&sh.lock);
-		  struct pollfd things[2] = {
+		  struct pollfd things[1] = {
 			{
 			  .fd = ino,
 			  .events = POLLIN
 			},
-			{
-			  .fd = sh.pid;
-			  .events = POLLIN|POLLOUT
-			}
 		  };
-
-		  int amt = ppoll(&things,1,&left,NULL);
+		  int amt;
+		  timespecsub(&left, &now, &cur->due);
+		  WAIT_AGAIN:
+		  amt = ppoll(&things,1,&left,NULL);
 		  if(amt == 0) {
 			goto RUN_IT;
 		  } else if(amt < 0) {
 			assert(errno == EINTR);
 			goto RECALCULATE;
 		  }
-		  if(thing[0].revents & POLLIN) {
+		  if(things[0].revents & POLLIN) {
 			static char buf[0x1000]
 			  __attribute__ ((aligned(__alignof__(struct inotify_event))));
 			ssize_t len = read(ino,buf, sizeof(buf));
@@ -274,12 +192,19 @@ int main(int argc, char *argv[])
 			  }
 			}
 			// nope, some other file changed
-			goto RECALCULATE;
+			if(cur)
+			  goto RECALCULATE;
+			// we're actually waiting for rules to exist, oops...
+			goto WAIT_AGAIN;
 		  }
-		  goto RUN_IT;
 		}
+	  }
 	} else {
 	  puts("Couldn't find any rules!");
-
+	  left.tv_sec = 10;
+	  left.tv_nsec = 0;
+	  goto WAIT_AGAIN;
+	}
+  }
   return 0;
 }
