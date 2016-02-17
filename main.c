@@ -12,6 +12,22 @@
 #include <poll.h>
 #include <errno.h>
 
+void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) {
+  dest->tv_sec += a->tv_sec + b->tv_sec;
+  dest->tv_nsec = a->tv_nsec + b->tv_nsec;
+  if(dest->tv_nsec > 1000000000) {
+	dest->tv_sec += dest->tv_nsec / 1000000000;
+	dest->tv_nsec %= 1000000000;
+  }
+}
+
+void timespecsub(struct timespec* dest, struct timespec* a, struct timespec* b) {
+  bool needborrow = a->tv_nsec < b->tv_nsec;
+  dest->tv_sec = a->tv_sec - (needborrow ? 1 : 0) - b->tv_sec;
+  dest->tv_nsec = a->tv_nsec + (needborrow ? 1000000000 : 0) - b->tv_nsec; 
+}
+
+
 void parse_interval(struct tm* dest,
 					const char* s,
 					ssize_t len) {
@@ -45,7 +61,7 @@ void update_due(struct rule* r, struct timespec* base) {
   ONE(min);
   ONE(hour);
   ONE(mday);
-  ONE(month);
+  ONE(mon);
   ONE(year);
 
   r->due.tv_sec = mktime(&date);
@@ -66,9 +82,9 @@ struct rule* parse(struct rule* ret, size_t* space) {
 	if(which%(1<<8)==0) {
 	  /* faster to allocate in chunks */
 	  size_t old = *space;
-	  *space += ((((which>>8)+1)<<8)*sizeof(struct rule));
-	  ret = realloc(ret,*space);
-	  memset(ret+old,0,*space-old);
+	  *space += ((which>>8)+1)<<8;
+	  ret = realloc(ret,*space*sizeof(struct rule));
+	  memset(ret+old,0,(*space-old)*sizeof(struct rule));
 	}
 	// parse interval
 	size_t start = i;
@@ -97,10 +113,10 @@ struct rule* parse(struct rule* ret, size_t* space) {
 	++which;
   }
  DONE:
-  munmap(s,file_info.st_size);
+  munmap((void*)s,file_info.st_size);
   // now we don't need the trailing chunk
-  *space = which*sizeof(struct rule);
-  ret = realloc(ret,*space);
+  *space = which;
+  ret = realloc(ret,*space*sizeof(struct rule));
   return ret;
 }
 

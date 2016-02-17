@@ -4,7 +4,7 @@
 #include "calendar.h"
 
 struct parser {
-  struct interval interval;
+  struct tm interval;
   enum { SEEKNUM, FINISHNUM, SEEKUNIT, FINISHUNIT } state;
   const char* s;
   ssize_t start;

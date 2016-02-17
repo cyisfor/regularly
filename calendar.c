@@ -4,18 +4,18 @@
 void advance_interval(struct tm* dest, struct interval* iv) {
 #define ONE(UNIT,what)							\
   case UNIT:									\
-	dest->tm_ ## what += iv->interval;			\
+	dest->tm_ ## what += iv->amount;			\
 	return
-
-  ONE(SECONDS,sec);
-  ONE(MINUTES,min);
-  ONE(HOURS,hour);
-  ONE(DAYS,day);
+  switch(iv->unit) {
+	ONE(SECONDS,sec);
+	ONE(MINUTES,min);
+	ONE(HOURS,hour);
+	ONE(DAYS,mday);
   case WEEKS:
-	dest->tm_day += 7 * iv->amount;
+	dest->tm_mday += 7 * iv->amount;
 	return;
-  ONE(MONTHS,mon);
-  ONE(YEARS,year);
+	ONE(MONTHS,mon);
+	ONE(YEARS,year);
   default:
 	error("whoops the programmer forgot to account for a unit %d",iv->unit);
   };

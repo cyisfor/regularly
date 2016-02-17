@@ -37,9 +37,8 @@ bool next_token(struct parser* ctx) {
 		ctx->gotdot = true;
 		continue;
 	  }
-	  ctx->interval.amount = strtof(ctx->s+ctx->start,NULL);
+	  ctx->amount = strtof(ctx->s+ctx->start,NULL);
 	  ctx->state = SEEKUNIT;
-	  ctx->interval.unit = SECONDS;
 	  ctx->tokenlen = i - ctx->start;
 	  return true;
 	case SEEKUNIT:
@@ -50,35 +49,38 @@ bool next_token(struct parser* ctx) {
 
 	  ctx->start = i;
 	  switch(c) {
-#define ONE(lower,upper,full,UNIT)										\
+#define ONE(lower,upper,full,what)										\
 		case lower:														\
 	  case upper:														\
 		if(AT_END) {													\
-		  ctx->interval.unit = UNIT;									\
+		  ctx->interval.tm_ ## what = ctx->amount;						\
 		  DONE;															\
-		}															  \
-		++i;													  \
-		if(unimportant(ctx->s[i]) || ADVANCE(full)) { \
-		  ctx->interval.unit = UNIT;						   \
-		  DONE;												   \
-		} else {											   \
-		  error("bad unit %s at %d\n",ctx->s+i,i);			   \
-		}
-		ONE('h','H',"hour",HOURS);
+		}																\
+	  ++i;																\
+	  if(unimportant(ctx->s[i]) || ADVANCE(full)) {						\
+		ctx->interval.tm_ ## what  = ctx->amount;						\
+		DONE;															\
+	  } else {															\
+		error("bad unit %s at %d\n",ctx->s+i,i);						\
+	  }
+		ONE('s','S',"second",second);
+		// minute
+		ONE('h','H',"hour",hour);
+		ONE('d','D',"day",mday);
+		// month
+		ONE('y','Y',"year",year);
 		case 'm':
 		case 'M':
 		  ++i;
 		  if(AT_END || unimportant(ctx->s[i]) || ADVANCE("minute")) {
-			ctx->interval.unit = MINUTES;
+			ctx->interval.tm_min = ctx->amount;
 			DONE;
-		  } else if(ADVANCE("months")) {
-			ctx->interval.unit = MONTHS;
+		  } else if(ADVANCE("months") || ADVANCE("mo")) {
+			ctx->interval.tm_mon = ctx->amount;
 			DONE;
 		  } else {
 			error("bad unit %s at %d\n",ctx->s+i,i);
 		  }
-		ONE('s','S',"second",SECONDS);
-		ONE('y','Y',"year",YEARS);
 		default:
 		  error("not a unit %s at %d\n",ctx->s+i,i);
 	  };
