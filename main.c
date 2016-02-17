@@ -35,6 +35,7 @@ void parse_interval(struct tm* dest,
 	.s = s,
 	.len = len,
   };
+  memset(dest,0,sizeof(struct tm));
   while(next_token(&ctx)) {
 	if(ctx.state == SEEKNUM) {
 	  advance_interval(dest,&ctx.interval);
@@ -55,15 +56,7 @@ void update_due(struct rule* r, struct timespec* base) {
   // TODO: specify the base from which intervals are calculated
   struct tm date;
   localtime_r(&base->tv_sec,&date);
-  #define ONE(name)								\
-	date.tm_ ## name += r->interval.tm_ ## name	
-  ONE(sec);
-  ONE(min);
-  ONE(hour);
-  ONE(mday);
-  ONE(mon);
-  ONE(year);
-
+  advance_interval(&date,&r->interval);
   r->due.tv_sec = mktime(&date);
 }
 

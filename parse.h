@@ -5,6 +5,7 @@
 
 struct parser {
   struct tm interval;
+  int amount; // pending unitless amount
   enum { SEEKNUM, FINISHNUM, SEEKUNIT, FINISHUNIT } state;
   const char* s;
   ssize_t start;
@@ -14,4 +15,3 @@ struct parser {
 };
 
 bool next_token(struct parser* ctx);
-

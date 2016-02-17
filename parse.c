@@ -37,7 +37,7 @@ bool next_token(struct parser* ctx) {
 		ctx->gotdot = true;
 		continue;
 	  }
-	  ctx->amount = strtof(ctx->s+ctx->start,NULL);
+	  ctx->amount = strtod(ctx->s+ctx->start,NULL);
 	  ctx->state = SEEKUNIT;
 	  ctx->tokenlen = i - ctx->start;
 	  return true;

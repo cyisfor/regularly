@@ -11,7 +11,8 @@ int main(int argc, char *argv[])
   while(next_token(&ctx)) {
 	fputs("token: ",stdout);
 	fwrite(ctx.s+ctx.start,ctx.tokenlen,1,stdout);
-	printf("| state: %d quantity: %f unit %d\n",ctx.state,ctx.quantity,ctx.unit);
+	time_t derp = mktime(&ctx.interval);
+	printf("| state: %d interval %s",ctime(&derp));
   }
   return 0;
 }
