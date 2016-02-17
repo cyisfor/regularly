@@ -17,26 +17,24 @@ void timespecsub(struct timespec* dest, struct timespec* a, struct timespec* b) 
   dest->tv_nsec = a->tv_nsec + (needborrow ? 1000000000 : 0) - b->tv_nsec; 
 }
 
-void parse_interval(struct timespec* dest,
-					struct timespec* base,
+void parse_interval(struct interval* dest,
 					const char* s,
 					ssize_t len) {
   struct parser ctx = {
 	.s = s,
 	.len = len,
   };
-  struct timespec nextint;
-  //TODO: allow setting the base time that interval is calculated from?
-  clock_gettime(CLOCK_REALTIME,&nextint);
   while(next_token(&ctx)) {
 	if(ctx.state == SEEKNUM) {
-	  advance_time(&nextint,ctx.unit,ctx.interval);
+	  dest->unit = ctx.unit;
+	  dest->amount = ctx.interval;
 	}
   }
 }
 
+
 struct rule {
-  struct timespec interval;
+  struct interval interval;
   struct timespec due;
   char* command;
   ssize_t command_length;
@@ -51,7 +49,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
   assert(s);
   int which = 0;
   struct timespec now;
-  clock_gettime(CLOCK_MONOTONIC,&now);
+  clock_gettime(CLOCK_REALTIME,&now);
   size_t i = 0;
   while(i<buf.st_size) {
 	if(which%(1<<8)==0) {
@@ -70,9 +68,11 @@ struct rule* parse(struct rule* ret, size_t* space) {
 		warn("junk trailer %s\n",s+start);
 		goto DONE;
 	  }
-	}	  
-	parse_interval(s+start,i-start,&ret[which].interval);
-	timespecadd(&ret[which].due,&ret[which].interval,&now);
+	}
+	parse_interval(&ret[which].interval,
+				   s+start,i-start);
+	memcpy(&ret[which].due,&now,sizeof(now));
+	advance_time(&ret[which].due,&ret[which].interval);
 	++i;
 	start = i;
 	for(;i<buf.st_size;++i) {
@@ -97,6 +97,19 @@ void onchild(int signal) {
   return;
 }
 
+struct rule* find_next(struct rule* first, ssize_t num) {
+  ssize_t i;
+  struct rule* soonest = first;
+  for(i=1;i<num;++i) {
+	if(first[i].due.tv_sec > soonest->due.tv_sec)
+	  continue;
+	if(first[i].due.tv_sec == soonest->due.tv_sec &&
+	   first[i].due.tv_nsec > soonest->due.tv_nsec)
+	   continue;
+	soonest = first + i;
+  }
+  return soonest;
+}	
 
 int main(int argc, char *argv[])
 {
@@ -115,7 +128,7 @@ int main(int argc, char *argv[])
 	r = parse(r,&space);
 	if(r) {
 	  for(;;) {
-		struct rule* cur = find_next(r);
+		struct rule* cur = find_next(r,space);
 		RECALCULATE:
 		clock_gettime(CLOCK_MONOTONIC,&now);
 		if(cur->due.tv_sec <= now.tv_sec &&
@@ -130,7 +143,8 @@ int main(int argc, char *argv[])
 			  cur->disabled = true;
 			}
 		  }
-		  timespecadd(&cur->due,&cur->interval,&now);
+		  memcpy(&cur->due,&now,sizeof(now));
+		  advance_time(&cur->due,&cur->interval);
 		} else {
 		  struct timespec left;
 		  struct pollfd things[1] = {

@@ -13,6 +13,13 @@ static struct tm* clock_localtime(struct timespec* base) {
   return &mytm;
 }
 
+/*  http://www.rosettacode.org/wiki/Leap_year#C */
+bool is_leap_year(int year)
+{
+  year += 1900;
+  return (!(year % 4) && year % 100 || !(year % 400)) ? 1 : 0;
+}
+
 static void inc_year(struct tm* base) {
   base->tm_year += 1;
 }
@@ -39,25 +46,40 @@ static void inc_week(struct tm* base) {
 	inc_day(base);
 }
 
-void advance_time(struct timespec* dest, enum time_unit unit, uint32_t increment) {
+void advance_time(struct timespec* dest, struct interval* iv) {
+  if(iv->unit == WEEKS) {
+	iv->amount *= 7;
+	iv->unit = DAYS;
+	return advance_time(dest,iv);
+  }
+
   struct tm* base = clock_localtime(dest);
   uint32_t i;
-  for(i=0;i<increment;++i) {
-	switch(unit) {
-#define ONE(what,how)							\
-	  case what:								\
-		inc_ ## how(base);						\
-		continue
-	  ONE(SECONDS,sec);
-	  ONE(MINUTES,min);
-	  ONE(HOURS,hour);
-	  ONE(DAYS,mday);
-	  ONE(WEEKS,week);
-	  ONE(MONTHS,month);
-	  ONE(YEARS,year);
+#define ONE(UNIT,what,low,high,parent)			\
+  case UNIT:									\
+	while(iv->amount < (high)) {				\
+	  iv->amount -= (high);						\
+	  base->what = low;							\
+	  inc_ ## parent(base);						\
+	}											\
+	base->what = iv->amount;					\
+	break;
+  switch(iv->unit) {
+	  ONE(SECONDS,sec,0,59,min);
+	  ONE(MINUTES,min,0,59,hour);
+	  ONE(HOURS,hour,0,23,mday);
+	  ONE(DAYS,mday,1,
+		  mdays[base->tm_mon] +
+		  // ugh, February...
+		  (base->tm_mon == 1 && is_leap_year(base->tm_year)) ? 1 : 0,
+		  month);
+	  ONE(MONTHS,month,0,11,year);
+	  case YEARS:
+		base->tm_year += iv->amount;
+		break;
 	  default:
-		error("whoops the programmer forgot to account for a unit %d",unit);
-	};
-  }
+		error("whoops the programmer forgot to account for a iv->unit %d",iv->unit);
+  };
+  
   dest->tv_sec = mktime(base);
 }
