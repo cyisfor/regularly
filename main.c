@@ -12,27 +12,7 @@
 #include <poll.h>
 #include <errno.h>
 
-void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) {
-  dest->tv_sec += a->tv_sec + b->tv_sec;
-  dest->tv_nsec = a->tv_nsec + b->tv_nsec;
-  if(dest->tv_nsec > 1000000000) {
-	dest->tv_sec += dest->tv_nsec / 1000000000;
-	dest->tv_nsec %= 1000000000;
-  }
-}
-
-void timespecsub(struct timespec* dest, struct timespec* a, struct timespec* b) {
-  bool needborrow = a->tv_nsec < b->tv_nsec;
-  dest->tv_sec = a->tv_sec - (needborrow ? 1 : 0) - b->tv_sec;
-  dest->tv_nsec = a->tv_nsec + (needborrow ? 1000000000 : 0) - b->tv_nsec; 
-}
-
-struct intervals {
-  struct interval* boop;
-  ssize_t count;
-}
-
-void parse_interval(struct intervals* dest,
+void parse_interval(struct tm* dest,
 					const char* s,
 					ssize_t len) {
   struct parser ctx = {
@@ -41,46 +21,48 @@ void parse_interval(struct intervals* dest,
   };
   while(next_token(&ctx)) {
 	if(ctx.state == SEEKNUM) {
-	  ++dest->count;
-	  dest->boop = realloc(dest->boop,dest->count*sizeof(struct interval));
-	  memcpy(dest->boop+dest->count-1,&ctx.interval,sizeof(struct interval));
+	  advance_interval(dest,&ctx.interval);
 	}
   }
 }
 
-
 struct rule {
-  struct intervals intervals;
+  struct tm interval;
   struct timespec due;
   char* command;
   ssize_t command_length;
   uint8_t retries;
   bool disabled;
-};  
+};
 
-void advance_rule(struct timespec* base, struct rule* r) {
+void update_due(struct rule* r, struct timespec* base) {
+  // TODO: specify the base from which intervals are calculated
   struct tm date;
-  localtime_r(base->tv_sec,&date);
-  int i;
-  for(i=0;i < r->intervals.count;++i) {
-	advance_interval(&date,&r->intervals[i]);
-  }
-  base.tv_sec = mktime(date);
-}
+  localtime_r(&base->tv_sec,&date);
+  #define ONE(name)								\
+	date.tm_ ## name += r->interval.tm_ ## name	
+  ONE(sec);
+  ONE(min);
+  ONE(hour);
+  ONE(mday);
+  ONE(month);
+  ONE(year);
 
+  r->due.tv_sec = mktime(&date);
+}
 
 struct rule* parse(struct rule* ret, size_t* space) {
   int fd = open("rules", O_RDONLY);
   if(fd < 0) return NULL;
-  struct stat buf;
-  fstat(fd,&buf);
-  const char* s = mmap(NULL, buf.st_size,PROT_READ,MAP_PRIVATE,fd,0);
+  struct stat file_info;
+  fstat(fd,&file_info);
+  const char* s = mmap(NULL, file_info.st_size,PROT_READ,MAP_PRIVATE,fd,0);
   assert(s);
   int which = 0;
   struct timespec now;
   clock_gettime(CLOCK_REALTIME,&now);
   size_t i = 0;
-  while(i<buf.st_size) {
+  while(i<file_info.st_size) {
 	if(which%(1<<8)==0) {
 	  /* faster to allocate in chunks */
 	  size_t old = *space;
@@ -93,19 +75,17 @@ struct rule* parse(struct rule* ret, size_t* space) {
 	for(;;) {
 	  if(s[i] == '\n')
 		break;
-	  if(++i == buf.st_size) {
+	  if(++i == file_info.st_size) {
 		warn("junk trailer %s\n",s+start);
 		goto DONE;
 	  }
 	}
-	parse_interval(&ret[which].intervals,
+	parse_interval(&ret[which].interval,
 				   s+start,i-start);
-	advance_time(&now, &ret[which]);
-	
-	advance_time(&ret[which].due,&ret[which].interval);
+	update_due(&ret[which],&now);
 	++i;
 	start = i;
-	for(;i<buf.st_size;++i) {
+	for(;i<file_info.st_size;++i) {
 	  if(s[i] == '\n')
 		break;
 	}
@@ -117,6 +97,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 	++which;
   }
  DONE:
+  munmap(s,file_info.st_size);
   // now we don't need the trailing chunk
   *space = which*sizeof(struct rule);
   ret = realloc(ret,*space);
@@ -168,7 +149,7 @@ int main(int argc, char *argv[])
 		  goto WAIT_AGAIN;
 		}
 		RECALCULATE:
-		clock_gettime(CLOCK_MONOTONIC,&now);
+		clock_gettime(CLOCK_REALTIME,&now);
 		if(cur->due.tv_sec <= now.tv_sec &&
 		   cur->due.tv_nsec <= now.tv_nsec) {
 		  int res;
@@ -184,8 +165,7 @@ int main(int argc, char *argv[])
 			  goto RUN_IT;
 			}
 		  } else {
-			memcpy(&cur->due,&now,sizeof(now));
-			advance_time(&cur->due,&cur->interval);
+		  	update_due(cur,&now);
 		  }
 		} else {
 		  struct pollfd things[1] = {

@@ -7,5 +7,4 @@ struct interval {
   float amount;
 };
 
-
-void advance_time(struct timespec* base, struct interval* iv);
+void advance_interval(struct tm* dest, struct interval* iv);
