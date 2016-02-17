@@ -1,6 +1,13 @@
 #include "errors.h"
 #include "parse.h" // next_token
 #include <time.h>
+#include <string.h> // memcpy
+#include <fcntl.h> // open, O_RDONLY
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <pwd.h>
+#include <unistd.h> // getuid
+#include <sys/inotify.h>
 
 void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) {
   dest->tv_sec += a->tv_sec + b->tv_sec;
@@ -26,8 +33,7 @@ void parse_interval(struct interval* dest,
   };
   while(next_token(&ctx)) {
 	if(ctx.state == SEEKNUM) {
-	  dest->unit = ctx.unit;
-	  dest->amount = ctx.interval;
+	  memcpy(dest,&ctx.interval,sizeof(ctx.interval));
 	}
   }
 }
@@ -38,7 +44,9 @@ struct rule {
   struct timespec due;
   char* command;
   ssize_t command_length;
-  
+  uint8_t retries;
+  bool disabled;
+};  
 		
 struct rule* parse(struct rule* ret, size_t* space) {
   int fd = open("rules", O_RDONLY);
@@ -116,7 +124,7 @@ int main(int argc, char *argv[])
   struct passwd* me = getpwuid(getuid());
   assert_zero(chdir(me->pw_dir));
   assert_zero(chdir(".config"));
-  mkdir("regularly");
+  mkdir("regularly",0700);
   assert_zero(chdir("regularly"));
   int ino = inotify_init();
   inotify_add_watch(ino,".",IN_MOVED_TO|IN_CLOSE_WRITE);
@@ -138,13 +146,17 @@ int main(int argc, char *argv[])
 		  res = system(cur->command);
 		  if(!WIFEXITED(res) || 0 != WEXITSTATUS(res)) {
 			warn("%s exited with %d\n",cur->command,res);
-			if(--cur->retries == 0) {
+			if(cur->retries == 0) {
 			  warn("disabling");
 			  cur->disabled = true;
+			} else {
+			  --cur->retries;
+			  goto RUN_IT;
 			}
+		  } else {
+			memcpy(&cur->due,&now,sizeof(now));
+			advance_time(&cur->due,&cur->interval);
 		  }
-		  memcpy(&cur->due,&now,sizeof(now));
-		  advance_time(&cur->due,&cur->interval);
 		} else {
 		  struct timespec left;
 		  struct pollfd things[1] = {

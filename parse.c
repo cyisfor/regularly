@@ -37,9 +37,9 @@ bool next_token(struct parser* ctx) {
 		ctx->gotdot = true;
 		continue;
 	  }
-	  ctx->quantity = strtof(ctx->s+ctx->start,NULL);
+	  ctx->interval.amount = strtof(ctx->s+ctx->start,NULL);
 	  ctx->state = SEEKUNIT;
-	  ctx->unit = SECONDS;
+	  ctx->interval.unit = SECONDS;
 	  ctx->tokenlen = i - ctx->start;
 	  return true;
 	case SEEKUNIT:
@@ -50,16 +50,16 @@ bool next_token(struct parser* ctx) {
 
 	  ctx->start = i;
 	  switch(c) {
-#define ONE(lower,upper,full,UNIT)							   \
-		case lower:											   \
-	  case upper:											   \
-		if(AT_END) {												  \
-		  ctx->unit = UNIT;											  \
-		  DONE;															  \
+#define ONE(lower,upper,full,UNIT)										\
+		case lower:														\
+	  case upper:														\
+		if(AT_END) {													\
+		  ctx->interval.unit = UNIT;									\
+		  DONE;															\
 		}															  \
 		++i;													  \
 		if(unimportant(ctx->s[i]) || ADVANCE(full)) { \
-		  ctx->unit = UNIT;									   \
+		  ctx->interval.unit = UNIT;						   \
 		  DONE;												   \
 		} else {											   \
 		  error("bad unit %s at %d\n",ctx->s+i,i);			   \
@@ -69,10 +69,10 @@ bool next_token(struct parser* ctx) {
 		case 'M':
 		  ++i;
 		  if(AT_END || unimportant(ctx->s[i]) || ADVANCE("minute")) {
-			ctx->unit = MINUTES;
+			ctx->interval.unit = MINUTES;
 			DONE;
 		  } else if(ADVANCE("months")) {
-			ctx->unit = MONTHS;
+			ctx->interval.unit = MONTHS;
 			DONE;
 		  } else {
 			error("bad unit %s at %d\n",ctx->s+i,i);
