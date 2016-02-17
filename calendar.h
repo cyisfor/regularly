@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <time.h>
 enum time_unit { SECONDS, HOURS, MINUTES, DAYS, WEEKS, MONTHS, YEARS };
 
 struct interval {

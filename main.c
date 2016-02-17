@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "errors.h"
 #include "parse.h" // next_token
 #include <time.h>
@@ -8,6 +9,8 @@
 #include <pwd.h>
 #include <unistd.h> // getuid
 #include <sys/inotify.h>
+#include <poll.h>
+#include <errno.h>
 
 void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) {
   dest->tv_sec += a->tv_sec + b->tv_sec;
@@ -50,7 +53,7 @@ struct rule {
 		
 struct rule* parse(struct rule* ret, size_t* space) {
   int fd = open("rules", O_RDONLY);
-  if(fd < 0) exit(4);
+  if(fd < 0) return NULL;
   struct stat buf;
   fstat(fd,&buf);
   const char* s = mmap(NULL, buf.st_size,PROT_READ,MAP_PRIVATE,fd,0);
@@ -109,6 +112,7 @@ struct rule* find_next(struct rule* first, ssize_t num) {
   ssize_t i;
   struct rule* soonest = first;
   for(i=1;i<num;++i) {
+	if(first[i].disabled == true) continue;
 	if(first[i].due.tv_sec > soonest->due.tv_sec)
 	  continue;
 	if(first[i].due.tv_sec == soonest->due.tv_sec &&
@@ -130,13 +134,20 @@ int main(int argc, char *argv[])
   inotify_add_watch(ino,".",IN_MOVED_TO|IN_CLOSE_WRITE);
   struct rule* r = NULL;
   size_t space = 0;
-  struct timespec now;
+  struct timespec now,left;
+  
   for(;;) {
   REPARSE:
 	r = parse(r,&space);
 	if(r) {
 	  for(;;) {
 		struct rule* cur = find_next(r,space);
+		if(cur->disabled) {
+		  warn("All rules disabled");
+		  left.tv_sec = 10;
+		  left.tv_nsec = 0;
+		  goto WAIT_AGAIN;
+		}
 		RECALCULATE:
 		clock_gettime(CLOCK_MONOTONIC,&now);
 		if(cur->due.tv_sec <= now.tv_sec &&
@@ -158,7 +169,6 @@ int main(int argc, char *argv[])
 			advance_time(&cur->due,&cur->interval);
 		  }
 		} else {
-		  struct timespec left;
 		  struct pollfd things[1] = {
 			{
 			  .fd = ino,
@@ -168,7 +178,7 @@ int main(int argc, char *argv[])
 		  int amt;
 		  timespecsub(&left, &now, &cur->due);
 		  WAIT_AGAIN:
-		  amt = ppoll(&things,1,&left,NULL);
+		  amt = ppoll(things,1,&left,NULL);
 		  if(amt == 0) {
 			goto RUN_IT;
 		  } else if(amt < 0) {
@@ -180,9 +190,10 @@ int main(int argc, char *argv[])
 			  __attribute__ ((aligned(__alignof__(struct inotify_event))));
 			ssize_t len = read(ino,buf, sizeof(buf));
 			assert(len > 0);
-			struct inotify_event* event = buf;
+			struct inotify_event* event = (struct inotify_event*)buf;
+			int i;
 			for(i=0;i<len/sizeof(struct inotify_event);++i) {
-			  if(strcmcp("rules",event[i]->name)) {
+			  if(strcmp("rules",event[i].name)) {
 				// config changed, reparse
 				goto REPARSE;
 			  }

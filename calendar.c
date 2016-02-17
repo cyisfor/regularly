@@ -1,14 +1,16 @@
 #include "calendar.h"
+#include "errors.h"
+
 #include <stdbool.h>
 #include <stdarg.h>
 
 uint8_t mdays[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
 static void clock_localtime_r(struct timespec* time, struct tm* dest) {
-  localtime_r(base.tv_sec,&dest);
+  localtime_r(&time->tv_sec,dest);
 }
 static struct tm* clock_localtime(struct timespec* base) {
-  static tm mytm; // so we can pass it to localtime_r elsewhere
+  static struct tm mytm; // so we can pass it to localtime_r elsewhere
   clock_localtime_r(base,&mytm);
   return &mytm;
 }
@@ -26,25 +28,19 @@ static void inc_year(struct tm* base) {
 
 #define INCTHING(what,higher,low,high) \
   static void inc_ ## what(struct tm* base) {	\
-	if(base->tm_ ## what == limit) {			\
+	puts("inc " #what);							\
+	if(base->tm_ ## what == (high)) {			\
 	  inc_ ## higher(base);						\
 	  base->tm_ ## what = low;					\
 	} else {									\
-	  ++base->tm ## what;						\
+	  ++base->tm_ ## what;						\
 	}											\
   }
-INCTHING(month,year,0,11);
-INCTHING(mday,month,1,mdays[base->tm_mon]);
+INCTHING(mon,year,0,11);
+INCTHING(mday,mon,1,mdays[base->tm_mon]);
 INCTHING(hour,mday,0,23);
 INCTHING(min,hour,0,59);
 INCTHING(sec,min,0,59);
-
-
-static void inc_week(struct tm* base) {
-  uint8_t i;
-  for(i=0;i<7;++i)
-	inc_day(base);
-}
 
 void advance_time(struct timespec* dest, struct interval* iv) {
   if(iv->unit == WEEKS) {
@@ -59,10 +55,10 @@ void advance_time(struct timespec* dest, struct interval* iv) {
   case UNIT:									\
 	while(iv->amount < (high)) {				\
 	  iv->amount -= (high);						\
-	  base->what = low;							\
+	  base->tm_ ## what = low;							\
 	  inc_ ## parent(base);						\
 	}											\
-	base->what = iv->amount;					\
+	base->tm_ ## what = iv->amount;					\
 	break;
   switch(iv->unit) {
 	  ONE(SECONDS,sec,0,59,min);
@@ -72,14 +68,14 @@ void advance_time(struct timespec* dest, struct interval* iv) {
 		  mdays[base->tm_mon] +
 		  // ugh, February...
 		  (base->tm_mon == 1 && is_leap_year(base->tm_year)) ? 1 : 0,
-		  month);
-	  ONE(MONTHS,month,0,11,year);
+		  mon);
+	  ONE(MONTHS,mon,0,11,year);
 	  case YEARS:
 		base->tm_year += iv->amount;
 		break;
 	  default:
 		error("whoops the programmer forgot to account for a iv->unit %d",iv->unit);
   };
-  
+
   dest->tv_sec = mktime(base);
 }

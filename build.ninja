@@ -5,9 +5,9 @@ rule program
 rule object
   command = gcc $cflags -c -o $out $in
 build test_parse: program test_parse.o parse.o errors.o
-build regularly: program main.o parse.o errors.o 
+build regularly: program main.o parse.o errors.o calendar.o
 build parse.o: object parse.c
 build test_parse.o: object test_parse.c
 build main.o: object main.c
 build errors.o: object errors.c
-
+build calendar.o: object calendar.c
