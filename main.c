@@ -27,7 +27,12 @@ void timespecsub(struct timespec* dest, struct timespec* a, struct timespec* b) 
   dest->tv_nsec = a->tv_nsec + (needborrow ? 1000000000 : 0) - b->tv_nsec; 
 }
 
-void parse_interval(struct interval* dest,
+struct intervals {
+  struct interval* boop;
+  ssize_t count;
+}
+
+void parse_interval(struct intervals* dest,
 					const char* s,
 					ssize_t len) {
   struct parser ctx = {
@@ -36,21 +41,34 @@ void parse_interval(struct interval* dest,
   };
   while(next_token(&ctx)) {
 	if(ctx.state == SEEKNUM) {
-	  memcpy(dest,&ctx.interval,sizeof(ctx.interval));
+	  ++dest->count;
+	  dest->boop = realloc(dest->boop,dest->count*sizeof(struct interval));
+	  memcpy(dest->boop+dest->count-1,&ctx.interval,sizeof(struct interval));
 	}
   }
 }
 
 
 struct rule {
-  struct interval interval;
+  struct intervals intervals;
   struct timespec due;
   char* command;
   ssize_t command_length;
   uint8_t retries;
   bool disabled;
 };  
-		
+
+void advance_rule(struct timespec* base, struct rule* r) {
+  struct tm date;
+  localtime_r(base->tv_sec,&date);
+  int i;
+  for(i=0;i < r->intervals.count;++i) {
+	advance_interval(&date,&r->intervals[i]);
+  }
+  base.tv_sec = mktime(date);
+}
+
+
 struct rule* parse(struct rule* ret, size_t* space) {
   int fd = open("rules", O_RDONLY);
   if(fd < 0) return NULL;
@@ -66,7 +84,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 	if(which%(1<<8)==0) {
 	  /* faster to allocate in chunks */
 	  size_t old = *space;
-	  *space += (((which>>8+1)<<8)*sizeof(struct rule));
+	  *space += ((((which>>8)+1)<<8)*sizeof(struct rule));
 	  ret = realloc(ret,*space);
 	  memset(ret+old,0,*space-old);
 	}
@@ -80,9 +98,10 @@ struct rule* parse(struct rule* ret, size_t* space) {
 		goto DONE;
 	  }
 	}
-	parse_interval(&ret[which].interval,
+	parse_interval(&ret[which].intervals,
 				   s+start,i-start);
-	memcpy(&ret[which].due,&now,sizeof(now));
+	advance_time(&now, &ret[which]);
+	
 	advance_time(&ret[which].due,&ret[which].interval);
 	++i;
 	start = i;
@@ -176,7 +195,7 @@ int main(int argc, char *argv[])
 			},
 		  };
 		  int amt;
-		  timespecsub(&left, &now, &cur->due);
+		  timespecsub(&left, &cur->due, &now);
 		  WAIT_AGAIN:
 		  amt = ppoll(things,1,&left,NULL);
 		  if(amt == 0) {
