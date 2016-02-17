@@ -63,7 +63,7 @@ bool next_token(struct parser* ctx) {
 	  } else {															\
 		error("bad unit %s at %d\n",ctx->s+i,i);						\
 	  }
-		ONE('s','S',"second",second);
+		ONE('s','S',"second",sec);
 		// minute
 		ONE('h','H',"hour",hour);
 		ONE('d','D',"day",mday);
