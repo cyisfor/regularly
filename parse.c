@@ -49,34 +49,39 @@ bool next_token(struct parser* ctx) {
 
 	  ctx->start = i;
 	  switch(c) {
-#define ONE(lower,upper,full,what)										\
-		case lower:														\
-	  case upper:														\
-		if(AT_END) {													\
-		  ctx->interval.tm_ ## what = ctx->amount;						\
-		  DONE;															\
-		}																\
-	  ++i;																\
-	  if(unimportant(ctx->s[i]) || ADVANCE(full)) {						\
-		ctx->interval.tm_ ## what  = ctx->amount;						\
-		DONE;															\
-	  } else {															\
-		error("bad unit %s at %d\n",ctx->s+i,i);						\
+#define ONE(lower,upper,advance,what)				\
+		case lower:									\
+	  case upper:									\
+		if(AT_END) {								\
+		  ctx->interval.tm_ ## what = ctx->amount;	\
+		  DONE;										\
+		}											\
+	  ++i;											\
+	  if(unimportant(ctx->s[i]) || advance) {		\
+		ctx->interval.tm_ ## what += ctx->amount;	\
+		DONE;										\
+	  } else {										\
+		error("bad unit %s at %d\n",ctx->s+i,i);	\
 	  }
-		ONE('s','S',"second",sec);
+		ONE('s','S',ADVANCE("second") || ADVANCE("sec"),sec);
 		// minute
-		ONE('h','H',"hour",hour);
-		ONE('d','D',"day",mday);
+		ONE('h','H',ADVANCE("hour"),hour);
+		ONE('d','D',ADVANCE("day"),mday);
 		// month
-		ONE('y','Y',"year",year);
+		ONE('y','Y',ADVANCE("year") || ADVANCE("yr"),year);
 		case 'm':
 		case 'M':
 		  ++i;
-		  if(AT_END || unimportant(ctx->s[i]) || ADVANCE("minute")) {
-			ctx->interval.tm_min = ctx->amount;
+		  if(AT_END || unimportant(ctx->s[i]) ||
+		  /* advance the full one first, so it won't leave "ute" unparsed. */
+			 ADVANCE("minute") ||
+			 ADVANCE("min")) {
+			ctx->interval.tm_min += ctx->amount;
 			DONE;
-		  } else if(ADVANCE("months") || ADVANCE("mo")) {
-			ctx->interval.tm_mon = ctx->amount;
+		  } else if(ADVANCE("months") ||
+					ADVANCE("mon") ||
+					ADVANCE("mo")) {
+			ctx->interval.tm_mon += ctx->amount;
 			DONE;
 		  } else {
 			error("bad unit %s at %d\n",ctx->s+i,i);

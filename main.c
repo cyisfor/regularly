@@ -11,7 +11,8 @@
 #include <sys/inotify.h>
 #include <poll.h>
 #include <errno.h>
-
+#include <stdio.h>								
+  
 void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) {
   dest->tv_sec += a->tv_sec + b->tv_sec;
   dest->tv_nsec = a->tv_nsec + b->tv_nsec;
@@ -163,7 +164,9 @@ int main(int argc, char *argv[])
 		   cur->due.tv_nsec <= now.tv_nsec) {
 		  int res;
 		RUN_IT:
+		  warn("delay was %s",ctime_interval(&cur->interval));
 		  res = system(cur->command);
+		  fflush(stdout);
 		  if(!WIFEXITED(res) || 0 != WEXITSTATUS(res)) {
 			warn("%s exited with %d\n",cur->command,res);
 			if(cur->retries == 0) {

@@ -4,18 +4,18 @@
 #include <stdbool.h>
 
 #define FOR_TM									\
-  ONE(sec);										\
-  ONE(min);										\
-  ONE(hour);									\
-  ONE(mday);									\
-  ONE(mon);										\
-  ONE(year);
+  ONE(sec,"second");										\
+  ONE(min,"minute");										\
+  ONE(hour,"hour");									\
+  ONE(mday,"day");											\
+  ONE(mon,"month");										\
+  ONE(year,"year");
 
 const char* ctime_interval(struct tm* interval) {
   static char buf[0x100];
   ssize_t offset = 0;
   bool first = true;
-  #define ONE(what) \
+  #define ONE(what,name) \
 	if(interval->tm_ ## what) {											\
 	  if(first) {														\
 		first = false;													\
@@ -26,8 +26,13 @@ const char* ctime_interval(struct tm* interval) {
 	  }																	\
 	  offset+=snprintf(buf+offset,										\
 					   0x100-offset,									\
-					   "%d " #what,										\
-					   interval->tm_ ## what)
+					   "%d " name,										\
+					   interval->tm_ ## what);							\
+	  if(interval->tm_ ## what > 1) {									\
+		buf[offset] = 's';												\
+		++offset;														\
+	  }																	\
+	}
   FOR_TM;
 #undef ONE
   return buf;
@@ -35,7 +40,7 @@ const char* ctime_interval(struct tm* interval) {
 
 
 void advance_interval(struct tm* dest, struct tm* interval) {
-#define ONE(what)								\
+#define ONE(what,name)							\
   dest->tm_ ## what += interval->tm_ ## what;
   FOR_TM;
 #undef ONE
