@@ -26,3 +26,11 @@ void warn(const char* s, ...) {
   putchar('\n');
 }
 
+void info(const char* s, ...) {
+  va_list args;
+  va_start(args,s);
+  vfprintf(stderr,s, args);
+  va_end(args);
+  putchar('\n');
+}
+

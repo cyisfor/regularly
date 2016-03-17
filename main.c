@@ -11,8 +11,8 @@
 #include <sys/inotify.h>
 #include <poll.h>
 #include <errno.h>
-#include <stdio.h>								
-  
+#include <stdio.h>
+
 void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) {
   dest->tv_sec += a->tv_sec + b->tv_sec;
   dest->tv_nsec = a->tv_nsec + b->tv_nsec;
@@ -25,7 +25,7 @@ void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) 
 void timespecsub(struct timespec* dest, struct timespec* a, struct timespec* b) {
   bool needborrow = a->tv_nsec < b->tv_nsec;
   dest->tv_sec = a->tv_sec - (needborrow ? 1 : 0) - b->tv_sec;
-  dest->tv_nsec = a->tv_nsec + (needborrow ? 1000000000 : 0) - b->tv_nsec; 
+  dest->tv_nsec = a->tv_nsec + (needborrow ? 1000000000 : 0) - b->tv_nsec;
 }
 
 
@@ -59,6 +59,7 @@ void update_due(struct rule* r, struct timespec* base) {
   localtime_r(&base->tv_sec,&date);
   advance_interval(&date,&r->interval);
   r->due.tv_sec = mktime(&date);
+  r->due.tv_nsec = 0; // eh
 }
 
 struct rule* parse(struct rule* ret, size_t* space) {
@@ -92,7 +93,12 @@ struct rule* parse(struct rule* ret, size_t* space) {
 	}
 	parse_interval(&ret[which].interval,
 				   s+start,i-start);
-	update_due(&ret[which],&now);
+	if(getenv("nowait")) {
+	  // just make everything due on startup
+	  memcpy(&ret[which].due,&now,sizeof(now));
+	} else {
+	  update_due(&ret[which],&now);
+	}
 	++i;
 	start = i;
 	for(;i<file_info.st_size;++i) {
@@ -104,6 +110,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 	if(i-start>1)
 	  assert(ret[which].command[i-start-1] != '\n');
 	ret[which].command[i-start] = '\0';
+	++i;
 	++which;
   }
  DONE:
@@ -131,98 +138,119 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 	soonest = first + i;
   }
   return soonest;
-}	
+}
 
 int main(int argc, char *argv[])
 {
-  struct passwd* me = getpwuid(getuid());
+
+  struct passwd* me = NULL;
+  int ino = -1;
+  struct rule* r = NULL;
+  size_t space = 0;
+  struct timespec now,left;
+  struct pollfd things[1] = {
+	.fd = -1,
+	.events = POLLIN
+  }
+
+
+  me = getpwuid(getuid());
   assert_zero(chdir(me->pw_dir));
   assert_zero(chdir(".config"));
   mkdir("regularly",0700);
   assert_zero(chdir("regularly"));
-  int ino = inotify_init();
+
+  ino = inotify_init();
   inotify_add_watch(ino,".",IN_MOVED_TO|IN_CLOSE_WRITE);
-  struct rule* r = NULL;
-  size_t space = 0;
-  struct timespec now,left;
+
+  things[0].fd = ino;
+
+REPARSE:
+  r = parse(r,&space);
   
-  for(;;) {
-  REPARSE:
-	r = parse(r,&space);
-	if(r) {
-	  for(;;) {
-		struct rule* cur = find_next(r,space);
-		if(cur->disabled) {
-		  warn("All rules disabled");
-		  left.tv_sec = 10;
-		  left.tv_nsec = 0;
-		  goto WAIT_AGAIN;
-		}
-		RECALCULATE:
-		clock_gettime(CLOCK_REALTIME,&now);
-		if(cur->due.tv_sec <= now.tv_sec &&
-		   cur->due.tv_nsec <= now.tv_nsec) {
-		  int res;
-		RUN_IT:
-		  warn("delay was %s",ctime_interval(&cur->interval));
-		  res = system(cur->command);
-		  fflush(stdout);
-		  if(!WIFEXITED(res) || 0 != WEXITSTATUS(res)) {
-			warn("%s exited with %d\n",cur->command,res);
-			if(cur->retries == 0) {
-			  warn("disabling");
-			  cur->disabled = true;
-			} else {
-			  --cur->retries;
-			  goto RUN_IT;
-			}
-		  } else {
-		  	update_due(cur,&now);
-		  }
-		} else {
-		  struct pollfd things[1] = {
-			{
-			  .fd = ino,
-			  .events = POLLIN
-			},
-		  };
-		  int amt;
-		  timespecsub(&left, &cur->due, &now);
-		  WAIT_AGAIN:
-		  amt = ppoll(things,1,&left,NULL);
-		  if(amt == 0) {
-			goto RUN_IT;
-		  } else if(amt < 0) {
-			assert(errno == EINTR);
-			goto RECALCULATE;
-		  }
-		  if(things[0].revents & POLLIN) {
-			static char buf[0x1000]
-			  __attribute__ ((aligned(__alignof__(struct inotify_event))));
-			ssize_t len = read(ino,buf, sizeof(buf));
-			assert(len > 0);
-			struct inotify_event* event = (struct inotify_event*)buf;
-			int i;
-			for(i=0;i<len/sizeof(struct inotify_event);++i) {
-			  if(strcmp("rules",event[i].name)) {
-				// config changed, reparse
-				goto REPARSE;
-			  }
-			}
-			// nope, some other file changed
-			if(cur)
-			  goto RECALCULATE;
-			// we're actually waiting for rules to exist, oops...
-			goto WAIT_AGAIN;
-		  }
-		}
+MAYBE_RUN_RULE:
+  if(r) {
+	goto RUN_RULE;
+  } else {
+	warn("Couldn't find any rules!");
+	left.tv_sec = 10;
+	left.tv_nsec = 0;
+  }
+WAIT_FOR_CONFIG:
+  amt = ppoll(things,1,&left,NULL);
+  if(amt == 0) {
+	// no things (no config updates) so we're golden.
+	goto MAYBE_RUN_RULE;
+  }
+  if(amt < 0) {
+	assert(errno == EINTR);
+	goto WAIT_FOR_CONFIG;
+  }
+  if(things[0].revents & POLLIN) {
+	static char buf[0x1000]
+	  __attribute__ ((aligned(__alignof__(struct inotify_event))));
+	ssize_t len = read(ino,buf, sizeof(buf));
+	assert(len > 0);
+	struct inotify_event* event = (struct inotify_event*)buf;
+	int i;
+	for(i=0;i<len/sizeof(struct inotify_event);++i) {
+	  if(strcmp("rules",event[i].name)) {
+		// config changed, reparse
+		goto REPARSE;
 	  }
-	} else {
-	  warn("Couldn't find any rules!");
+	}
+  }
+  goto WAIT_FOR_CONFIG;
+RUN_RULE:
+  { struct rule* cur = find_next(r,space);
+	if(cur == NULL) {
+	  warn("All rules disabled");
 	  left.tv_sec = 10;
 	  left.tv_nsec = 0;
-	  goto WAIT_AGAIN;
+	  goto WAIT_FOR_CONFIG;
 	}
+	clock_gettime(CLOCK_REALTIME,&now);
+	//warn("cur %d now %d",cur->due.tv_sec,now.tv_sec);
+	if(cur->due.tv_sec <= now.tv_sec &&
+	   cur->due.tv_nsec <= now.tv_nsec) {
+	  int res;
+	  if(cur->disabled)
+		goto RUN_RULE;
+	  info("running command: %s",cur->command);
+	RETRY_RULE:
+	  res = system(cur->command);
+	  fflush(stdout);
+	  if(!WIFEXITED(res) || 0 != WEXITSTATUS(res)) {
+		warn("%s exited with %d\n",cur->command,res);
+		if(cur->retries == 0) {
+		  warn("disabling");
+		  cur->disabled = true;
+		  goto RUN_RULE;
+		} else {
+		  --cur->retries;
+		  goto RETRY_RULE;
+		  return;		  
+		} else {
+		  clock_gettime(CLOCK_REALTIME,&now);
+		  update_due(cur,&now);
+		  goto RUN_RULE;
+		}
+	  } else {
+		int amt;
+		timespecsub(&left, &cur->due, &now);
+		if(left.tv_sec < 0) {
+		  left.tv_sec = 0;
+		  left.tv_nsec = 0;
+		} else if(left.tv_sec == 0) {
+		  if(left.tv_nsec < 0)
+			left.tv_nsec = 0;
+		}
+		info("delay is %s? waiting %d %d",ctime_interval(&cur->interval),
+			 left.tv_sec,left.tv_nsec);
+		goto WAIT_FOR_CONFIG; 
+	  }
+	}
+	error("should never get here!");
   }
   return 0;
 }
