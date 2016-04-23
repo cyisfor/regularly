@@ -91,6 +91,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 		goto DONE;
 	  }
 	}
+
 	parse_interval(&ret[which].interval,
 				   s+start,i-start);
 	if(getenv("nowait")) {
@@ -125,6 +126,16 @@ void onchild(int signal) {
   return;
 }
 
+const char* shell = NULL;
+
+int mysystem(const char* command) {
+  /* TODO: put this in... limits.conf file? idk */
+  int pid = fork();
+  if(pid == 0) {
+    execlp(shell,shell,"-c",command,NULL);
+  }
+  assert(pid > 0);
+
 struct rule* find_next(struct rule* first, ssize_t num) {
   ssize_t i;
   struct rule* soonest = first;
@@ -137,6 +148,7 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 	   continue;
 	soonest = first + i;
   }
+  if(soonest->disabled) return NULL;
   return soonest;
 }
 
@@ -148,12 +160,12 @@ int main(int argc, char *argv[])
   struct rule* r = NULL;
   size_t space = 0;
   struct timespec now,left;
-  struct pollfd things[1] = {
+  struct pollfd things[1] = { {
 	.fd = -1,
 	.events = POLLIN
-  }
-
-
+  } };
+  ssize_t amt;
+  
   me = getpwuid(getuid());
   assert_zero(chdir(me->pw_dir));
   assert_zero(chdir(".config"));
@@ -164,6 +176,14 @@ int main(int argc, char *argv[])
   inotify_add_watch(ino,".",IN_MOVED_TO|IN_CLOSE_WRITE);
 
   things[0].fd = ino;
+
+  shell = me->pw_shell;
+  if(shell == NULL) {
+    shell = getenv("SHELL");
+    if(shell == NULL) {
+      shell = "sh";
+    }
+  }
 
 REPARSE:
   r = parse(r,&space);
@@ -211,14 +231,15 @@ RUN_RULE:
 	}
 	clock_gettime(CLOCK_REALTIME,&now);
 	//warn("cur %d now %d",cur->due.tv_sec,now.tv_sec);
-	if(cur->due.tv_sec <= now.tv_sec &&
+	if(cur->due.tv_sec <= now.tv_sec ||
+       cur->due.tv_sec == now.tv_sec &&
 	   cur->due.tv_nsec <= now.tv_nsec) {
 	  int res;
 	  if(cur->disabled)
 		goto RUN_RULE;
 	  info("running command: %s",cur->command);
-	RETRY_RULE:
-	  res = system(cur->command);
+	RETRY_RULE:    
+	  res = mysystem(cur->command);
 	  fflush(stdout);
 	  if(!WIFEXITED(res) || 0 != WEXITSTATUS(res)) {
 		warn("%s exited with %d\n",cur->command,res);
@@ -229,27 +250,25 @@ RUN_RULE:
 		} else {
 		  --cur->retries;
 		  goto RETRY_RULE;
-		  return;		  
-		} else {
-		  clock_gettime(CLOCK_REALTIME,&now);
-		  update_due(cur,&now);
-		  goto RUN_RULE;
 		}
+		
 	  } else {
-		int amt;
-		timespecsub(&left, &cur->due, &now);
-		if(left.tv_sec < 0) {
-		  left.tv_sec = 0;
-		  left.tv_nsec = 0;
-		} else if(left.tv_sec == 0) {
-		  if(left.tv_nsec < 0)
-			left.tv_nsec = 0;
-		}
-		info("delay is %s? waiting %d %d",ctime_interval(&cur->interval),
-			 left.tv_sec,left.tv_nsec);
-		goto WAIT_FOR_CONFIG; 
+		clock_gettime(CLOCK_REALTIME,&now);
+		update_due(cur,&now);
+		goto RUN_RULE;
 	  }
-	}
+	} else {
+	  int amt;
+	  timespecsub(&left, &cur->due, &now);
+	  if(left.tv_sec <= 0) {
+      // no waiting less than a second, please
+		left.tv_sec = 1;
+		left.tv_nsec = 0;
+	  } 
+	  info("delay is %s? waiting %d %d",ctime_interval(&cur->interval),
+		   left.tv_sec,left.tv_nsec);
+	  goto WAIT_FOR_CONFIG; 
+	}  
 	error("should never get here!");
   }
   return 0;
