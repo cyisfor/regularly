@@ -9,6 +9,10 @@
 #include <pwd.h>
 #include <unistd.h> // getuid
 #include <sys/inotify.h>
+#include <sys/time.h> // setrlimit
+#include <sys/resource.h> // setrlimit
+#include <sys/wait.h> // waitpid
+
 #include <poll.h>
 #include <errno.h>
 #include <stdio.h>
@@ -129,13 +133,25 @@ void onchild(int signal) {
 const char* shell = NULL;
 
 int mysystem(const char* command) {
-  /* TODO: put this in... limits.conf file? idk */
   int pid = fork();
   if(pid == 0) {
+    /* TODO: put this in... limits.conf file? idk */
+    struct rlimit lim = {
+      .rlim_cur = 0x100,
+      .rlim_max = 0x100
+    };
+    setrlimit(RLIMIT_NPROC,&lim);
+    lim.rlim_cur = 200;
+    lim.rlim_max = 300;
+    setrlimit(RLIMIT_CPU,&lim);
+    // no other limits can really be guessed at...
     execlp(shell,shell,"-c",command,NULL);
   }
   assert(pid > 0);
-
+  int status = 0;
+  assert(pid == waitpid(pid,&status,0));
+  return status;
+}
 struct rule* find_next(struct rule* first, ssize_t num) {
   ssize_t i;
   struct rule* soonest = first;
@@ -177,13 +193,15 @@ int main(int argc, char *argv[])
 
   things[0].fd = ino;
 
-  shell = me->pw_shell;
+  /*shell = me->pw_shell;
   if(shell == NULL) {
     shell = getenv("SHELL");
     if(shell == NULL) {
       shell = "sh";
     }
-  }
+  }*/
+  // better to have a standard behavior not based on your login shell.
+  shell = "sh";
 
 REPARSE:
   r = parse(r,&space);
