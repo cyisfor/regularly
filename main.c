@@ -26,6 +26,27 @@ void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) 
   }
 }
 
+// only works for unsigned numbers...
+#define MAXOF(a) (unsigned long long int) (-1 | (a))
+
+void timespecmul(struct timespec* src, float factor) {
+  float nsecs = src->tv_nsec * factor;
+  float secs = src->tv_sec * factor;
+  if(secs > MAXOF(src->tv_sec)) {
+	src->tv_sec = MAXOF(src->tv_sec);
+	return;
+  }
+  while(nsecs > MAXOF(src->tv_nsec)) {
+	if(src->tv_sec == MAXOF(src->tv_sec)) {
+	  src->tv_sec = MAXOF(src->tv_sec);
+	  return;
+	}
+	++src->tv_sec;
+	nsecs -= 1.0e9;
+  }
+  src->tv_nsec = nsecs;
+}
+
 void timespecsub(struct timespec* dest, struct timespec* a, struct timespec* b) {
   bool needborrow = a->tv_nsec < b->tv_nsec;
   dest->tv_sec = a->tv_sec - (needborrow ? 1 : 0) - b->tv_sec;
@@ -54,6 +75,7 @@ struct rule {
   char* command;
   ssize_t command_length;
   uint8_t retries;
+  uint8_t slowdown;
   bool disabled;
 };
 
@@ -62,7 +84,7 @@ void update_due(struct rule* r, struct timespec* base) {
   struct tm date;
   localtime_r(&base->tv_sec,&date);
   advance_interval(&date,&r->interval);
-  r->due.tv_sec = mktime(&date);
+  r->due.tv_sec = mktime(&date) / r->slowdown;
   r->due.tv_nsec = 0; // eh
 }
 
@@ -85,6 +107,8 @@ struct rule* parse(struct rule* ret, size_t* space) {
 	  ret = realloc(ret,*space*sizeof(struct rule));
 	  memset(ret+old,0,(*space-old)*sizeof(struct rule));
 	}
+	ret[which].retries = 3;
+	ret[which].slowdown = 1;
 	// parse interval
 	size_t start = i;
 	for(;;) {
@@ -140,10 +164,10 @@ int mysystem(const char* command) {
       .rlim_cur = 0x100,
       .rlim_max = 0x100
     };
-    setrlimit(RLIMIT_NPROC,&lim);
+    //setrlimit(RLIMIT_NPROC,&lim);
     lim.rlim_cur = 200;
     lim.rlim_max = 300;
-    setrlimit(RLIMIT_CPU,&lim);
+    //setrlimit(RLIMIT_CPU,&lim);
     // no other limits can really be guessed at...
     execlp(shell,shell,"-c",command,NULL);
   }
@@ -261,13 +285,17 @@ RUN_RULE:
 	  fflush(stdout);
 	  if(!WIFEXITED(res) || 0 != WEXITSTATUS(res)) {
 		warn("%s exited with %d\n",cur->command,res);
+		clock_gettime(CLOCK_REALTIME,&now);
 		if(cur->retries == 0) {
-		  warn("disabling");
-		  cur->disabled = true;
+		  warn("slowing down");
+		  ++cur->slowdown;
+		  cur->retries = 3;
+		  update_due(cur,&now);
 		  goto RUN_RULE;
 		} else {
 		  --cur->retries;
-		  goto RETRY_RULE;
+		  update_due(cur,&now);
+		  goto RUN_RULE;
 		}
 		
 	  } else {
