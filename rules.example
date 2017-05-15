@@ -1,0 +1,5 @@
+wait = 1 hour
+~/some/command
+wait = 2 minutes
+failing = 6 minutes
+. ~/code/system.check
