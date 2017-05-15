@@ -12,10 +12,16 @@
 #include <sys/time.h> // setrlimit
 #include <sys/resource.h> // setrlimit
 #include <sys/wait.h> // waitpid
+#include <ctype.h> // isspace
 
 #include <poll.h>
 #include <errno.h>
 #include <stdio.h>
+
+// sigh
+#define WRITE(s,n) fwrite(s,n,1,stderr)
+#define WRITELIT(l) WRITE(l,sizeof(l)-1)
+#define NL() fputc('\n',stderr);
 
 void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) {
   dest->tv_sec += a->tv_sec + b->tv_sec;
@@ -71,21 +77,31 @@ void parse_interval(struct tm* dest,
 
 struct rule {
   struct tm interval;
+	struct tm failing;
+  uint8_t retries;
+	uint8_t retried;
   struct timespec due;
   char* command;
   ssize_t command_length;
-  uint8_t retries;
-  uint8_t slowdown;
   bool disabled;
+};
+
+struct rule default_rule = {
+	.interval = { .tm_hour = 1 },
+	.failing = { .tm_hour = 2 },
+	.retries = 0
 };
 
 void update_due(struct rule* r, struct timespec* base) {
   // TODO: specify the base from which intervals are calculated
   struct tm date;
-  localtime_r(&base->tv_sec,&date);
+  gmtime_r(&base->tv_sec,&date);
   advance_interval(&date,&r->interval);
-  r->due.tv_sec = mktime(&date) / r->slowdown;
-  r->due.tv_nsec = 0; // eh
+  r->due.tv_sec = mktime(&date) + 1;
+  r->due.tv_nsec = 0;
+	// have it happen at the BEGINNING of the second, or the END of the second?
+	// or at base->tv_nsec nanoseconds after the second?
+	// end is prettier
 }
 
 struct rule* parse(struct rule* ret, size_t* space) {
@@ -100,53 +116,164 @@ struct rule* parse(struct rule* ret, size_t* space) {
   clock_gettime(CLOCK_REALTIME,&now);
   size_t i = 0;
   while(i<file_info.st_size) {
-	if(which%(1<<8)==0) {
-	  /* faster to allocate in chunks */
-	  size_t old = *space;
-	  *space += ((which>>8)+1)<<8;
-	  ret = realloc(ret,*space*sizeof(struct rule));
-	  memset(ret+old,0,(*space-old)*sizeof(struct rule));
-	}
-	ret[which].retries = 3;
-	ret[which].slowdown = 1;
-	// parse interval
-	size_t start = i;
-	for(;;) {
-	  if(s[i] == '\n')
-		break;
-	  if(++i == file_info.st_size) {
-		warn("junk trailer %s\n",s+start);
-		goto DONE;
-	  }
-	}
+		// parse name=value pairs, committing with a command.
+		size_t start = i;
+		size_t eq = start;
+		bool goteq = false;
+		for(;;) {
+			if(s[i] == '\n') break;
+			if(s[i] == '=') {
+				eq = i;
+				goteq = true;
+			}
+			if(++i == file_info.st_size) {
+				warn("doesn't end in a newline");
+				break;
+			}
+		}
+		size_t sname = start;
+		size_t ename = eq;
+		size_t sval = eq+1;
+		size_t eval = i;
+	
+		bool is_a_command(void) {
+			if(!goteq) {
+				--sval; // eq is start, so eq+1 is BAD
+				return true; // it's a command
+			}
+			for(;;) {
+				// strip trailing spaces from name
+				if(ename == start) {
+					// empty name means command
+					return true;
+				}
+				if(isspace(s[ename-1])) {
+					--ename;
+				} else {
+					break;
+				}
+			}
+			for(;;) {
+				// strip leading spaces from name
+				if(sname == ename) {
+					// empty name means command
+					return true;
+				}
+				if(isspace(s[sname])) {
+					++sname;
+				} else {
+					break;
+				}
+			}
+		
+			for(;;) {
+				// strip trailing spaces from value
+				if(eval == sval) {
+					WRITELIT("warning: empty value for ");
+					WRITE(s+sname,ename-sname);
+					NL();
+					return false; // still not a command
+				}
+				if(isspace(s[eval-1])) {
+					--eval;
+				} else {
+					break;
+				}
+			}
+		
+			for(;;) {
+				// strip leading spaces from value
+				if(sval == eval) {
+					WRITELIT("warning: empty value for ");
+					WRITE(s+sname,ename-sname);
+					NL();
+					return false; // still not a command
+				}
+				if(isspace(s[sval])) {
+					++sval;
+				} else {
+					break;
+				}
+			}
 
-	parse_interval(&ret[which].interval,
-				   s+start,i-start);
-	if(getenv("nowait")) {
-	  // just make everything due on startup
-	  memcpy(&ret[which].due,&now,sizeof(now));
-	} else {
-	  update_due(&ret[which],&now);
-	}
-	++i;
-	start = i;
-	for(;i<file_info.st_size;++i) {
-	  if(s[i] == '\n')
-		break;
-	}
-	ret[which].command = realloc(ret[which].command,i-start+1);
-	memcpy(ret[which].command,s+start,i-start);
-	if(i-start>1)
-	  assert(ret[which].command[i-start-1] != '\n');
-	ret[which].command[i-start] = '\0';
-	++i;
-	++which;
+			// not a command, but needs handling
+
+#define NAME_IS(N) (ename-sname == sizeof(N)-1 && 0==memcmp(s+sname,N,sizeof(N)-1))
+			if(NAME_IS("wait") || NAME_IS("interval")) {
+				parse_interval(&default_rule.interval,s+sval,eval-sval);
+				return false;
+			} else if(NAME_IS("retries")) {
+				// we know the end already is eval.
+				char* enumber = NULL;
+				// base == 0 allows for 0xFF and 0755 syntax
+				size_t retries = strtol(s+sval,&enumber,0);
+				if(enumber == s + eval) {
+					default_rule.retries = retries;
+				} else {
+					WRITELIT("warning: ignoring retries because not a number: ");
+					WRITE(s+sval,eval-sval);
+					NL();
+				}
+				return false;
+			} else if(NAME_IS("failing")) {
+				parse_interval(&default_rule.failing,s+sval,eval-sval);
+				return false;
+			}
+			// assume the command contains an '=' sign and this line isn't a n=v pair
+			return true;
+		}
+
+		if(is_a_command()) {
+			// use sval and eval because might be command= or just a leading =
+
+			if(which%(1<<8)==0) {
+				/* faster to allocate in chunks */
+				size_t old = *space;
+				*space += ((which>>8)+1)<<8;
+				ret = realloc(ret,*space*sizeof(struct rule));
+			}
+
+			{
+				struct tm tm;
+				// mktime sucks
+				memcpy(&tm, &default_rule.interval,sizeof(default_rule.interval));
+				time_t a = mktime(&tm);
+				memcpy(&tm, &default_rule.interval,sizeof(default_rule.interval));
+				time_t b = mktime(&tm);
+				// sanity check
+				if(b < a) {
+					char* derp = strdup(ctime_interval(&default_rule.failing));
+					warn("failing set to lower than normal wait time... %s < %s adjusting.",
+							 derp,
+							 ctime_interval(&default_rule.interval));
+					free(derp);
+					a = a << 1;
+					gmtime_r(&a,&default_rule.failing);
+				}
+			}
+			
+			// any n=v pairs now committed to the current rule.
+			// further rules will use the same values unless specified
+			memcpy(ret+which,&default_rule,sizeof(struct rule));
+			ret[which].command = realloc(ret[which].command,eval-sval+1);
+			memcpy(ret[which].command,s+sval,eval-sval);
+			ret[which].command[eval-sval] = '\0';
+			// we're not gonna mess with shell parsing... just pass to the shell.
+			if(getenv("nowait")) {
+				// just make everything due on startup
+				memcpy(&ret[which].due,&now,sizeof(now));
+			} else {
+				update_due(&ret[which],&now);
+			}
+			++which;
+		}
+		++i;
   }
  DONE:
   munmap((void*)s,file_info.st_size);
   // now we don't need the trailing chunk
   *space = which;
-  ret = realloc(ret,*space*sizeof(struct rule));
+  ret = realloc(ret,which*sizeof(struct rule));
   return ret;
 }
 
@@ -284,16 +411,19 @@ RUN_RULE:
 	  res = mysystem(cur->command);
 	  fflush(stdout);
 	  if(!WIFEXITED(res) || 0 != WEXITSTATUS(res)) {
-		warn("%s exited with %d\n",cur->command,res);
+		warn("exited with %d",cur->command,res);
 		clock_gettime(CLOCK_REALTIME,&now);
-		if(cur->retries == 0) {
-		  warn("slowing down");
-		  ++cur->slowdown;
-		  cur->retries = 3;
+		if(cur->retried == 0) {
+			time_t a = mktime(&cur->interval);
+			time_t b = mktime(&cur->failing);
+			a = (a+b)>>1; // average leads toward failing w/ every iteration
+			gmtime_r(&a, &cur->interval); 
+			warn("slowing down to %s",ctime_interval(&cur->interval));
+		  cur->retried = cur->retries;
 		  update_due(cur,&now);
 		  goto RUN_RULE;
 		} else {
-		  --cur->retries;
+		  --cur->retried;
 		  update_due(cur,&now);
 		  goto RUN_RULE;
 		}
@@ -311,8 +441,8 @@ RUN_RULE:
 		left.tv_sec = 1;
 		left.tv_nsec = 0;
 	  } 
-	  info("delay is %s? waiting %d %d",ctime_interval(&cur->interval),
-		   left.tv_sec,left.tv_nsec);
+	  info("delay is %s? waiting %d",ctime_interval(&cur->interval),
+		   left.tv_sec);
 	  goto WAIT_FOR_CONFIG; 
 	}  
 	error("should never get here!");
