@@ -26,6 +26,7 @@ void warn(const char* s, ...) {
   putchar('\n');
 }
 
+#ifndef SILENT_INFO
 void info(const char* s, ...) {
   va_list args;
   va_start(args,s);
@@ -33,4 +34,4 @@ void info(const char* s, ...) {
   va_end(args);
   putchar('\n');
 }
-
+#endif
