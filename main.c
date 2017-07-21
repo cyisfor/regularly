@@ -127,7 +127,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 				goteq = true;
 			}
 			if(++i == file_info.st_size) {
-				warn("doesn't end in a newline");
+				info("doesn't end in a newline");
 				break;
 			}
 		}
@@ -362,6 +362,7 @@ int main(int argc, char *argv[])
 
 REPARSE:
   r = parse(r,&space);
+	unsetenv("nowait");
   
 MAYBE_RUN_RULE:
   if(r) {
