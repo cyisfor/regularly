@@ -283,18 +283,22 @@ void onchild(int signal) {
 
 const char* shell = NULL;
 
+int log = -1;
+
 int mysystem(const char* command) {
   int pid = fork();
   if(pid == 0) {
     /* TODO: put this in... limits.conf file? idk */
-    struct rlimit lim = {
+		dup2(log,1);
+		dup2(log,2);
+/*     struct rlimit lim = {
       .rlim_cur = 0x100,
       .rlim_max = 0x100
     };
-    //setrlimit(RLIMIT_NPROC,&lim);
+    setrlimit(RLIMIT_NPROC,&lim);
     lim.rlim_cur = 200;
     lim.rlim_max = 300;
-    //setrlimit(RLIMIT_CPU,&lim);
+    setrlimit(RLIMIT_CPU,&lim); */
     // no other limits can really be guessed at...
     execlp(shell,shell,"-c",command,NULL);
   }
@@ -338,6 +342,8 @@ int main(int argc, char *argv[])
   assert_zero(chdir(".config"));
   mkdir("regularly",0700);
   assert_zero(chdir("regularly"));
+
+	log = open("log",O_APPEND|O_WRONLY|O_CREAT,0644);
 
   ino = inotify_init();
   inotify_add_watch(ino,".",IN_MOVED_TO|IN_CLOSE_WRITE);
@@ -441,8 +447,8 @@ RUN_RULE:
 		left.tv_sec = 1;
 		left.tv_nsec = 0;
 	  } 
-	  info("delay is %s? waiting %d",ctime_interval(&cur->interval),
-		   left.tv_sec);
+	  //info("delay is %s? waiting %d",ctime_interval(&cur->interval),
+		// left.tv_sec);
 	  goto WAIT_FOR_CONFIG; 
 	}  
 	error("should never get here!");
