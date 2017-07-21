@@ -283,14 +283,14 @@ void onchild(int signal) {
 
 const char* shell = NULL;
 
-int log = -1;
+int logfd = -1;
 
 int mysystem(const char* command) {
   int pid = fork();
   if(pid == 0) {
     /* TODO: put this in... limits.conf file? idk */
-		dup2(log,1);
-		dup2(log,2);
+		dup2(logfd,1);
+		dup2(logfd,2);
 /*     struct rlimit lim = {
       .rlim_cur = 0x100,
       .rlim_max = 0x100
@@ -343,7 +343,7 @@ int main(int argc, char *argv[])
   mkdir("regularly",0700);
   assert_zero(chdir("regularly"));
 
-	log = open("log",O_APPEND|O_WRONLY|O_CREAT,0644);
+	logfd = open("log",O_APPEND|O_WRONLY|O_CREAT,0644);
 
   ino = inotify_init();
   inotify_add_watch(ino,".",IN_MOVED_TO|IN_CLOSE_WRITE);
