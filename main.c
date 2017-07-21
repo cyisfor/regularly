@@ -412,7 +412,7 @@ RUN_RULE:
 	  int res;
 	  if(cur->disabled)
 		goto RUN_RULE;
-	  info("running command: %s",cur->command);
+	  warn("running command: %s",cur->command);
 	RETRY_RULE:    
 	  res = mysystem(cur->command);
 	  fflush(stdout);
@@ -447,7 +447,7 @@ RUN_RULE:
 		left.tv_sec = 1;
 		left.tv_nsec = 0;
 	  } 
-	  info("delay is %s? waiting %d",ctime_interval(&cur->interval),
+	  warn("delay is %s? waiting %d",ctime_interval(&cur->interval),
 				 left.tv_sec);
 	  goto WAIT_FOR_CONFIG; 
 	}  
