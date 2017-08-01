@@ -65,7 +65,7 @@ const char* myctime(time_t t) {
 }
 
 void advance_interval(struct tm* dest, struct tm* interval) {
-	info("advancing %s by %s",myctime(mktime(dest)),ctime_interval(interval));
+	info("advancing %s by %d %s",myctime(mktime(dest)),mktime(interval),ctime_interval(interval));
 #define ONE(what,name)													\
 	dest->tm_ ## what += interval->tm_ ## what;
 	FOR_TM;
