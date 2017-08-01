@@ -84,7 +84,7 @@ struct rule {
   char* command;
   ssize_t command_length;
   bool disabled;
-	const char* name;
+	char* name;
 };
 
 struct rule default_rule = {
