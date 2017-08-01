@@ -439,12 +439,17 @@ RUN_RULE:
 				warn("died with %d (%s)",WTERMSIG(res),strsignal(WTERMSIG(res)));
 				goto SLOW_DOWN;
 			} else if(WIFEXITED(res)) {
-				if (0 != WEXITSTATUS(res)) {
+				if (0 == WEXITSTATUS(res)) {
+					clock_gettime(CLOCK_REALTIME,&now);
+					update_due(cur,&now);
+					goto RUN_RULE;
+				} else {
 					warn("exited with %d",cur->command,WEXITSTATUS(res));
 					goto SLOW_DOWN;
 				}
 			} else {
 				error("command neither exited or died? WTF??? %d",res);
+				goto SLOW_DOWN;
 			}
 			goto RUN_RULE;
 		SLOW_DOWN:
@@ -461,11 +466,6 @@ RUN_RULE:
 			} else {
 				--cur->retried;
 				update_due(cur,&now);
-				goto RUN_RULE;
-			}
-		} else {
-			clock_gettime(CLOCK_REALTIME,&now);
-			update_due(cur,&now);
 				goto RUN_RULE;
 			}
 		} else {
