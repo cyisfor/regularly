@@ -98,7 +98,7 @@ void update_due(struct rule* r, struct timespec* base) {
   struct tm date;
   gmtime_r(&base->tv_sec,&date);
   advance_interval(&date,&r->interval);
-  r->due.tv_sec = mktime(&date) + 1;
+  r->due.tv_sec = mymktime(date) + 1;
   r->due.tv_nsec = 0;
 	// have it happen at the BEGINNING of the second, or the END of the second?
 	// or at base->tv_nsec nanoseconds after the second?
@@ -249,10 +249,8 @@ struct rule* parse(struct rule* ret, size_t* space) {
 			{
 				struct tm tm;
 				// mktime sucks
-				memcpy(&tm, &default_rule.interval,sizeof(default_rule.interval));
-				time_t a = mktime(&tm);
-				memcpy(&tm, &default_rule.interval,sizeof(default_rule.interval));
-				time_t b = mktime(&tm);
+				time_t a = mymktime(default_rule.interval);
+				time_t b = mymktime(default_rule.failing);
 				// sanity check
 				if(b < a) {
 					char normal[0x100];
@@ -472,8 +470,8 @@ RUN_RULE:
 			}
 			clock_gettime(CLOCK_REALTIME,&now);
 			if(cur->retried == 0) {
-				time_t a = mktime(&cur->interval);
-				time_t b = mktime(&cur->failing);
+				time_t a = mymktime(cur->interval);
+				time_t b = mymktime(cur->failing);
 				a = (a+b)>>1; // average leads toward failing w/ every iteration
 				gmtime_r(&a, &cur->interval); 
 				warn("slowing down to %d %s",a,ctime_interval(&cur->interval));
