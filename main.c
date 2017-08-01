@@ -204,6 +204,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 				default_rule.name = realloc(default_rule.name,eval-sval+1);
 				memcpy(default_rule.name,s+sval,eval-sval);
 				default_rule.name[eval-sval] = '\0';
+				info("found name %s",default_rule.name);
 			} else if(NAME_IS("wait") || NAME_IS("interval")) {
 				parse_interval(&default_rule.interval,s+sval,eval-sval);
 				return false;
@@ -331,7 +332,7 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 		info("%s: %s (%s)",
 				 first[i].name,
 				 ctime_interval(&intervalderp),
-				 myctime(&first[i].due.tv_sec));
+				 myctime(first[i].due.tv_sec));
 		if(first[i].disabled == true) continue;
 		if(first[i].due.tv_sec > soonest->due.tv_sec)
 			continue;
