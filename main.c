@@ -248,8 +248,8 @@ struct rule* parse(struct rule* ret, size_t* space) {
 			}
 
 			{
-				time_t a = mymktime(default_rule.interval);
-				time_t b = mymktime(default_rule.failing);
+				time_t a = interval_secs(default_rule.interval);
+				time_t b = interval_secs(default_rule.failing);
 				// sanity check
 				if(b < a) {
 					char normal[0x100];
@@ -473,8 +473,8 @@ RUN_RULE:
 			}
 			clock_gettime(CLOCK_REALTIME,&now);
 			if(cur->retried == 0) {
-				time_t a = mymktime(cur->interval);
-				time_t b = mymktime(cur->failing);
+				time_t a = interval_secs(cur->interval);
+				time_t b = interval_secs(cur->failing);
 				a = (a+b)>>1; // average leads toward failing w/ every iteration
 				gmtime_r(&a, &cur->interval); 
 				warn("slowing down to %d %s",a,ctime_interval(&cur->interval));
