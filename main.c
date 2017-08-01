@@ -67,12 +67,15 @@ void parse_interval(struct tm* dest,
 		.s = s,
 		.len = len,
   };
+	memset(dest,0,sizeof(*dest));
+	info("before: %s",ctime_interval(dest));
   memset(dest,0,sizeof(struct tm));
   while(next_token(&ctx)) {
 		if(ctx.state == SEEKNUM) {
 			advance_interval(dest,&ctx.interval);
 		}
   }
+	info("after: %s",ctime_interval(dest));
 }
 
 struct rule {
