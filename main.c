@@ -435,12 +435,16 @@ RUN_RULE:
 		RETRY_RULE:    
 			res = mysystem(cur->command);
 			fflush(stdout);
-			if(!WIFEXITED(res)) {
+			if(WIFSIGNALED(res)) {
 				warn("died with %d (%s)",WTERMSIG(res),strsignal(WTERMSIG(res)));
 				goto SLOW_DOWN;
-			} else if(0 != WEXITSTATUS(res)) {
-				warn("exited with %d",cur->command,WEXITSTATUS(res));
-				goto SLOW_DOWN;
+			} else if(WIFEXITED(res)) {
+				if (0 != WEXITSTATUS(res)) {
+					warn("exited with %d",cur->command,WEXITSTATUS(res));
+					goto SLOW_DOWN;
+				}
+			} else {
+				error("command neither exited or died? WTF??? %d",res);
 			}
 			goto RUN_RULE;
 		SLOW_DOWN:
