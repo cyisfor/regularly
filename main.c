@@ -256,8 +256,10 @@ struct rule* parse(struct rule* ret, size_t* space) {
 					char failing[0x100];
 					ctime_interval_r(&default_rule.failing, failing, 0x100);
 					ctime_interval_r(&default_rule.interval, normal, 0x100);
-					warn("failing set to lower than normal wait time... '%s' < '%s' adjusting.",
+					warn("failing set to lower than normal wait time... %d '%s' < %d '%s' adjusting.",
+							 b,
 							 failing,
+							 a,
 							 normal);
 					a = a << 1;
 					gmtime_r(&a,&default_rule.failing);
