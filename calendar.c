@@ -58,7 +58,7 @@ const char* ctime_interval(struct tm* interval) {
 }
 
 const char* myctime(time_t t) {
-	char* ret = ctime(t);
+	char* ret = ctime(&t);
 	ret[strlen(ret)-1] = '\0'; // stupid newline...
 	return ret;
 }
