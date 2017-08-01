@@ -140,6 +140,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 		bool is_a_command(void) {
 			if(sval == eval) {
 				// newline
+				return false;
 			}
 			if(!goteq) {
 				--sval; // eq is start, so eq+1 is BAD
