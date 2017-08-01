@@ -334,8 +334,9 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 	struct tm intervalderp;
 	struct timespec now;
 	timespecsub(&interval,&first[i].due,&now);
-	info("%s: %s (%s)",
+	info("%s: %d %s (%s)",
 			 first[0].name,
+			 interval.tv_sec,
 			 ctime_interval(&intervalderp),
 			 myctime(first[0].due.tv_sec));
 	clock_gettime(CLOCK_REALTIME,&now);
@@ -344,8 +345,9 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 		struct tm intervalderp;
 		timespecsub(&interval,&first[i].due,&now);
 		gmtime_r(&interval.tv_sec,&intervalderp);
-		info("%s: %s (%s)",
+		info("%s: %d %s (%s)",
 				 first[i].name,
+				 interval.tv_sec,
 				 ctime_interval(&intervalderp),
 				 myctime(first[i].due.tv_sec));
 		if(first[i].disabled == true) continue;
