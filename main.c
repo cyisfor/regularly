@@ -437,7 +437,7 @@ RUN_RULE:
 			res = mysystem(cur->command);
 			fflush(stdout);
 			if(WIFSIGNALED(res)) {
-				warn("died with %d (%s)",WTERMSIG(res),strsignal(WTERMSIG(res)));
+				warn("died with %hhd (%s)",WTERMSIG(res),strsignal(WTERMSIG(res)));
 			} else if(WIFEXITED(res)) {
 				if (0 == WEXITSTATUS(res)) {
 					// okay, it exited fine, update due and run the next rule
@@ -445,7 +445,7 @@ RUN_RULE:
 					update_due(cur,&now);
 					goto RUN_RULE;
 				} else {
-					warn("exited with %d",cur->command,WEXITSTATUS(res));
+					warn("exited with %hhd",cur->command,WEXITSTATUS(res));
 				}
 			} else {
 				error("command neither exited or died? WTF??? %d",res);
