@@ -242,11 +242,13 @@ struct rule* parse(struct rule* ret, size_t* space) {
 				time_t b = mktime(&tm);
 				// sanity check
 				if(b < a) {
-					char* derp = strdup(ctime_interval(&default_rule.failing));
-					warn("failing set to lower than normal wait time... %s < %s adjusting.",
-							 derp,
-							 ctime_interval(&default_rule.interval));
-					free(derp);
+					char normal[0x100];
+					char failing[0x100];
+					ctime_interval_r(&default_rule.failing, failing, 0x100);
+					ctime_interval_r(&default_rule.interval, normal, 0x100);
+					warn("failing set to lower than normal wait time... '%s' < '%s' adjusting.",
+							 failing,
+							 normal);
 					a = a << 1;
 					gmtime_r(&a,&default_rule.failing);
 				}
