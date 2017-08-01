@@ -205,6 +205,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 				memcpy(default_rule.name,s+sval,eval-sval);
 				default_rule.name[eval-sval] = '\0';
 				info("found name %s",default_rule.name);
+				return false;
 			} else if(NAME_IS("wait") || NAME_IS("interval")) {
 				parse_interval(&default_rule.interval,s+sval,eval-sval);
 				return false;
