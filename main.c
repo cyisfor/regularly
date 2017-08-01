@@ -248,7 +248,6 @@ struct rule* parse(struct rule* ret, size_t* space) {
 
 			{
 				struct tm tm;
-				// mktime sucks
 				time_t a = mymktime(default_rule.interval);
 				time_t b = mymktime(default_rule.failing);
 				// sanity check
