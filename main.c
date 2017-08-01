@@ -332,12 +332,12 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 	info("Rules found:");
 	struct timespec interval;
 	struct tm intervalderp;
+	struct timespec now;
 	timespecsub(&interval,&first[i].due,&now);
 	info("%s: %s (%s)",
 			 first[0].name,
 			 ctime_interval(&intervalderp),
 			 myctime(first[0].due.tv_sec));
-	struct timespec now;
 	clock_gettime(CLOCK_REALTIME,&now);
   for(i=1;i<num;++i) {
 		struct timespec interval;
