@@ -331,7 +331,7 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 		info("%s: %s (%s)",
 				 first[i].name,
 				 ctime_interval(&intervalderp),
-				 ctime(&first[i].due));
+				 asctime(&first[i].due));
 		if(first[i].disabled == true) continue;
 		if(first[i].due.tv_sec > soonest->due.tv_sec)
 			continue;
