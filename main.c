@@ -325,10 +325,12 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 	clock_gettime(CLOCK_REALTIME,&now);
   for(i=1;i<num;++i) {
 		struct timespec interval;
+		struct tm intervalderp;
 		timespecsub(&interval,&first[i].due,&now);
+		gmtime_r(&interval->tv_sec,&intervalderp);
 		info("%s: %s (%s)",
 				 first[i].name,
-				 ctime_interval(interval),
+				 ctime_interval(&intervalderp),
 				 ctime(&first[i].due));
 		if(first[i].disabled == true) continue;
 		if(first[i].due.tv_sec > soonest->due.tv_sec)
