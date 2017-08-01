@@ -27,8 +27,8 @@ void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) 
   dest->tv_sec += a->tv_sec + b->tv_sec;
   dest->tv_nsec = a->tv_nsec + b->tv_nsec;
   if(dest->tv_nsec > 1000000000) {
-	dest->tv_sec += dest->tv_nsec / 1000000000;
-	dest->tv_nsec %= 1000000000;
+		dest->tv_sec += dest->tv_nsec / 1000000000;
+		dest->tv_nsec %= 1000000000;
   }
 }
 
@@ -39,16 +39,16 @@ void timespecmul(struct timespec* src, float factor) {
   float nsecs = src->tv_nsec * factor;
   float secs = src->tv_sec * factor;
   if(secs > MAXOF(src->tv_sec)) {
-	src->tv_sec = MAXOF(src->tv_sec);
-	return;
+		src->tv_sec = MAXOF(src->tv_sec);
+		return;
   }
   while(nsecs > MAXOF(src->tv_nsec)) {
-	if(src->tv_sec == MAXOF(src->tv_sec)) {
-	  src->tv_sec = MAXOF(src->tv_sec);
-	  return;
-	}
-	++src->tv_sec;
-	nsecs -= 1.0e9;
+		if(src->tv_sec == MAXOF(src->tv_sec)) {
+			src->tv_sec = MAXOF(src->tv_sec);
+			return;
+		}
+		++src->tv_sec;
+		nsecs -= 1.0e9;
   }
   src->tv_nsec = nsecs;
 }
@@ -61,17 +61,17 @@ void timespecsub(struct timespec* dest, struct timespec* a, struct timespec* b) 
 
 
 void parse_interval(struct tm* dest,
-					const char* s,
-					ssize_t len) {
+										const char* s,
+										ssize_t len) {
   struct parser ctx = {
-	.s = s,
-	.len = len,
+		.s = s,
+		.len = len,
   };
   memset(dest,0,sizeof(struct tm));
   while(next_token(&ctx)) {
-	if(ctx.state == SEEKNUM) {
-	  advance_interval(dest,&ctx.interval);
-	}
+		if(ctx.state == SEEKNUM) {
+			advance_interval(dest,&ctx.interval);
+		}
   }
 }
 
@@ -271,7 +271,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 		}
 		++i;
   }
- DONE:
+DONE:
   munmap((void*)s,file_info.st_size);
   // now we don't need the trailing chunk
   *space = which;
@@ -294,13 +294,13 @@ int mysystem(const char* command) {
 		dup2(logfd,1);
 		dup2(logfd,2);
 /*     struct rlimit lim = {
-      .rlim_cur = 0x100,
-      .rlim_max = 0x100
-    };
-    setrlimit(RLIMIT_NPROC,&lim);
-    lim.rlim_cur = 200;
-    lim.rlim_max = 300;
-    setrlimit(RLIMIT_CPU,&lim); */
+			 .rlim_cur = 0x100,
+			 .rlim_max = 0x100
+			 };
+			 setrlimit(RLIMIT_NPROC,&lim);
+			 lim.rlim_cur = 200;
+			 lim.rlim_max = 300;
+			 setrlimit(RLIMIT_CPU,&lim); */
     // no other limits can really be guessed at...
     execlp(shell,shell,"-c",command,NULL);
   }
@@ -313,13 +313,13 @@ struct rule* find_next(struct rule* first, ssize_t num) {
   ssize_t i;
   struct rule* soonest = first;
   for(i=1;i<num;++i) {
-	if(first[i].disabled == true) continue;
-	if(first[i].due.tv_sec > soonest->due.tv_sec)
-	  continue;
-	if(first[i].due.tv_sec == soonest->due.tv_sec &&
-	   first[i].due.tv_nsec > soonest->due.tv_nsec)
-	   continue;
-	soonest = first + i;
+		if(first[i].disabled == true) continue;
+		if(first[i].due.tv_sec > soonest->due.tv_sec)
+			continue;
+		if(first[i].due.tv_sec == soonest->due.tv_sec &&
+			 first[i].due.tv_nsec > soonest->due.tv_nsec)
+			continue;
+		soonest = first + i;
   }
   if(soonest->disabled) return NULL;
   return soonest;
@@ -334,9 +334,9 @@ int main(int argc, char *argv[])
   size_t space = 0;
   struct timespec now,left;
   struct pollfd things[1] = { {
-	.fd = -1,
-	.events = POLLIN
-  } };
+			.fd = -1,
+			.events = POLLIN
+		} };
   ssize_t amt;
   
   me = getpwuid(getuid());
@@ -353,12 +353,12 @@ int main(int argc, char *argv[])
   things[0].fd = ino;
 
   /*shell = me->pw_shell;
-  if(shell == NULL) {
+		if(shell == NULL) {
     shell = getenv("SHELL");
     if(shell == NULL) {
-      shell = "sh";
+		shell = "sh";
     }
-  }*/
+		}*/
   // better to have a standard behavior not based on your login shell.
   shell = "sh";
 
@@ -368,93 +368,93 @@ REPARSE:
   
 MAYBE_RUN_RULE:
   if(r) {
-	goto RUN_RULE;
+		goto RUN_RULE;
   } else {
-	warn("Couldn't find any rules!");
-	left.tv_sec = 10;
-	left.tv_nsec = 0;
+		warn("Couldn't find any rules!");
+		left.tv_sec = 10;
+		left.tv_nsec = 0;
   }
 WAIT_FOR_CONFIG:
   amt = ppoll(things,1,&left,NULL);
   if(amt == 0) {
-	// no things (no config updates) so we're golden.
-	goto MAYBE_RUN_RULE;
+		// no things (no config updates) so we're golden.
+		goto MAYBE_RUN_RULE;
   }
   if(amt < 0) {
-	assert(errno == EINTR);
-	goto WAIT_FOR_CONFIG;
+		assert(errno == EINTR);
+		goto WAIT_FOR_CONFIG;
   }
   if(things[0].revents & POLLIN) {
-	static char buf[0x1000]
-	  __attribute__ ((aligned(__alignof__(struct inotify_event))));
-	ssize_t len = read(ino,buf, sizeof(buf));
-	assert(len > 0);
-	struct inotify_event* event = (struct inotify_event*)buf;
-	int i;
-	for(i=0;i<len/sizeof(struct inotify_event);++i) {
-	  if(strcmp("rules",event[i].name)) {
-		// config changed, reparse
-		goto REPARSE;
-	  }
-	}
+		static char buf[0x1000]
+			__attribute__ ((aligned(__alignof__(struct inotify_event))));
+		ssize_t len = read(ino,buf, sizeof(buf));
+		assert(len > 0);
+		struct inotify_event* event = (struct inotify_event*)buf;
+		int i;
+		for(i=0;i<len/sizeof(struct inotify_event);++i) {
+			if(strcmp("rules",event[i].name)) {
+				// config changed, reparse
+				goto REPARSE;
+			}
+		}
   }
   goto WAIT_FOR_CONFIG;
 RUN_RULE:
   { struct rule* cur = find_next(r,space);
-	if(cur == NULL) {
-	  warn("All rules disabled");
-	  left.tv_sec = 10;
-	  left.tv_nsec = 0;
-	  goto WAIT_FOR_CONFIG;
-	}
-	clock_gettime(CLOCK_REALTIME,&now);
-	//warn("cur %d now %d",cur->due.tv_sec,now.tv_sec);
-	if(cur->due.tv_sec <= now.tv_sec ||
-       cur->due.tv_sec == now.tv_sec &&
-	   cur->due.tv_nsec <= now.tv_nsec) {
-	  int res;
-	  if(cur->disabled)
-		goto RUN_RULE;
-	  warn("running command: %s",cur->command);
-	RETRY_RULE:    
-	  res = mysystem(cur->command);
-	  fflush(stdout);
-	  if(!WIFEXITED(res) || 0 != WEXITSTATUS(res)) {
-		warn("exited with %d",cur->command,res);
-		clock_gettime(CLOCK_REALTIME,&now);
-		if(cur->retried == 0) {
-			time_t a = mktime(&cur->interval);
-			time_t b = mktime(&cur->failing);
-			a = (a+b)>>1; // average leads toward failing w/ every iteration
-			gmtime_r(&a, &cur->interval); 
-			warn("slowing down to %s",ctime_interval(&cur->interval));
-		  cur->retried = cur->retries;
-		  update_due(cur,&now);
-		  goto RUN_RULE;
-		} else {
-		  --cur->retried;
-		  update_due(cur,&now);
-		  goto RUN_RULE;
+		if(cur == NULL) {
+			warn("All rules disabled");
+			left.tv_sec = 10;
+			left.tv_nsec = 0;
+			goto WAIT_FOR_CONFIG;
 		}
-		
-	  } else {
 		clock_gettime(CLOCK_REALTIME,&now);
-		update_due(cur,&now);
-		goto RUN_RULE;
-	  }
-	} else {
-	  int amt;
-	  timespecsub(&left, &cur->due, &now);
-	  if(left.tv_sec <= 0) {
-      // no waiting less than a second, please
-		left.tv_sec = 1;
-		left.tv_nsec = 0;
-	  } 
-	  warn("delay is %s? waiting %d",ctime_interval(&cur->interval),
-				 left.tv_sec);
-	  goto WAIT_FOR_CONFIG; 
-	}  
-	error("should never get here!");
+		//warn("cur %d now %d",cur->due.tv_sec,now.tv_sec);
+		if(cur->due.tv_sec <= now.tv_sec ||
+       cur->due.tv_sec == now.tv_sec &&
+			 cur->due.tv_nsec <= now.tv_nsec) {
+			int res;
+			if(cur->disabled)
+				goto RUN_RULE;
+			warn("running command: %s",cur->command);
+		RETRY_RULE:    
+			res = mysystem(cur->command);
+			fflush(stdout);
+			if(!WIFEXITED(res) || 0 != WEXITSTATUS(res)) {
+				warn("exited with %d",cur->command,res);
+				clock_gettime(CLOCK_REALTIME,&now);
+				if(cur->retried == 0) {
+					time_t a = mktime(&cur->interval);
+					time_t b = mktime(&cur->failing);
+					a = (a+b)>>1; // average leads toward failing w/ every iteration
+					gmtime_r(&a, &cur->interval); 
+					warn("slowing down to %s",ctime_interval(&cur->interval));
+					cur->retried = cur->retries;
+					update_due(cur,&now);
+					goto RUN_RULE;
+				} else {
+					--cur->retried;
+					update_due(cur,&now);
+					goto RUN_RULE;
+				}
+		
+			} else {
+				clock_gettime(CLOCK_REALTIME,&now);
+				update_due(cur,&now);
+				goto RUN_RULE;
+			}
+		} else {
+			int amt;
+			timespecsub(&left, &cur->due, &now);
+			if(left.tv_sec <= 0) {
+				// no waiting less than a second, please
+				left.tv_sec = 1;
+				left.tv_nsec = 0;
+			} 
+			warn("delay is %s? waiting %d",ctime_interval(&cur->interval),
+					 left.tv_sec);
+			goto WAIT_FOR_CONFIG; 
+		}  
+		error("should never get here!");
   }
   return 0;
 }

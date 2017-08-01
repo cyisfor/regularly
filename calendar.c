@@ -43,8 +43,12 @@ bool ctime_interval_r(struct tm* interval, char* buf, size_t len) {
 }
 
 const char* ctime_interval(struct tm* interval) {
-	static char* buf = malloc(0x100);
-	static size_t len = 0x100;
+	static char* buf = NULL;
+	static size_t len = 0;
+	if(buf == NULL) {
+		buf = malloc(0x100);
+		len = 0x100;
+	}
 
 	while(false == ctime_interval_r(interval, buf, len)) {
 		len += 0x100;
