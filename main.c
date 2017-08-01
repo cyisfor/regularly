@@ -143,7 +143,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 				info("newline");
 				return false;
 			}
-			info("nanewline");
+			info("nanewline %d %d",sval,eval);
 			if(!goteq) {
 				--sval; // eq is start, so eq+1 is BAD
 				return true; // it's a command
