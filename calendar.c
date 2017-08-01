@@ -57,8 +57,14 @@ const char* ctime_interval(struct tm* interval) {
 	return buf;
 }
 
+const char* myctime(time_t t) {
+	char* ret = ctime(t);
+	ret[strlen(ret)-1] = '\0'; // stupid newline...
+	return ret;
+}
+
 void advance_interval(struct tm* dest, struct tm* interval) {
-	info("advancing %s by %s",asctime(dest),ctime_interval(interval));
+	info("advancing %s by %s",myctime(mktime(dest)),ctime_interval(interval));
 #define ONE(what,name)													\
 	dest->tm_ ## what += interval->tm_ ## what;
 	FOR_TM;
