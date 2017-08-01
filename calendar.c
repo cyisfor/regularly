@@ -2,6 +2,7 @@
 #include "errors.h"
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h> // strlen
 
 #define FOR_TM																	\
 	ONE(sec,"second");														\
