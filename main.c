@@ -439,6 +439,7 @@ RUN_RULE:
 				warn("died with %d (%s)",WTERMSIG(res),strsignal(WTERMSIG(res)));
 			} else if(WIFEXITED(res)) {
 				if (0 == WEXITSTATUS(res)) {
+					// okay, it exited fine, update due and run the next rule
 					clock_gettime(CLOCK_REALTIME,&now);
 					update_due(cur,&now);
 					goto RUN_RULE;
