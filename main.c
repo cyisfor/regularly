@@ -63,18 +63,12 @@ void timespecsub(struct timespec* dest, struct timespec* a, struct timespec* b) 
 void parse_interval(struct tm* dest,
 										const char* s,
 										ssize_t len) {
-	static bool gotzero;
-	static struct tm zero;
   struct parser ctx = {
 		.s = s,
 		.len = len,
   };
-	if(!gotzero) {
-		time_t sigh;
-		gmtime_r(&sigh,&zero);
-		gotzero = true;
-	}
-	memcpy(dest,&zero,sizeof(struct tm));
+
+	memcpy(dest,&epoch,sizeof(struct tm));
   while(next_token(&ctx)) {
 		if(ctx.state == SEEKNUM) {
 			advance_interval(dest,&ctx.interval);
@@ -371,6 +365,8 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 int main(int argc, char *argv[])
 {
 
+	calendar_init();
+	
   struct passwd* me = NULL;
   int ino = -1;
   struct rule* r = NULL;
