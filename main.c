@@ -84,6 +84,7 @@ struct rule {
   char* command;
   ssize_t command_length;
   bool disabled;
+	const char* name;
 };
 
 struct rule default_rule = {
@@ -199,7 +200,11 @@ struct rule* parse(struct rule* ret, size_t* space) {
 			// not a command, but needs handling
 
 #define NAME_IS(N) (ename-sname == sizeof(N)-1 && 0==memcmp(s+sname,N,sizeof(N)-1))
-			if(NAME_IS("wait") || NAME_IS("interval")) {
+			if(NAME_IS("name")) {
+				default_rule.name = realloc(default_rule.name,eval-sval+1);
+				memcpy(default_rule.name,s+sval,eval-sval);
+				default_rule.name[eval-sval] = '\0';
+			} else if(NAME_IS("wait") || NAME_IS("interval")) {
 				parse_interval(&default_rule.interval,s+sval,eval-sval);
 				return false;
 			} else if(NAME_IS("retries")) {
@@ -257,6 +262,8 @@ struct rule* parse(struct rule* ret, size_t* space) {
 			// any n=v pairs now committed to the current rule.
 			// further rules will use the same values unless specified
 			memcpy(ret+which,&default_rule,sizeof(struct rule));
+			// be sure to transfer ownership of the name pointer. (move semantics)
+			default_rule.name = NULL;
 			ret[which].command = realloc(ret[which].command,eval-sval+1);
 			memcpy(ret[which].command,s+sval,eval-sval);
 			ret[which].command[eval-sval] = '\0';
@@ -312,7 +319,16 @@ int mysystem(const char* command) {
 struct rule* find_next(struct rule* first, ssize_t num) {
   ssize_t i;
   struct rule* soonest = first;
+	info("Rules found:");
+	struct timespec now;
+	clock_gettime(CLOCK_REALTIME,&now);
   for(i=1;i<num;++i) {
+		struct timespec interval;
+		timespecsub(&interval,&first[i].due,&now);
+		info("%s: %s (%s)",
+				 first[i].name,
+				 ctime_interval(interval),
+				 ctime(&first[i].due));
 		if(first[i].disabled == true) continue;
 		if(first[i].due.tv_sec > soonest->due.tv_sec)
 			continue;
