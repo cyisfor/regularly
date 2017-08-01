@@ -458,7 +458,7 @@ RUN_RULE:
 				time_t b = mktime(&cur->failing);
 				a = (a+b)>>1; // average leads toward failing w/ every iteration
 				gmtime_r(&a, &cur->interval); 
-				warn("slowing down to %s",ctime_interval(&cur->interval));
+				warn("slowing down to %d %s",a,ctime_interval(&cur->interval));
 				cur->retried = cur->retries;
 				update_due(cur,&now);
 				goto RUN_RULE;
