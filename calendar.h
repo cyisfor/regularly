@@ -10,3 +10,7 @@ const char* myctime(time_t t);
 
 // mktime sucks
 time_t mymktime(struct tm);
+
+extern struct tm epoch;
+
+void calendar_init(void);

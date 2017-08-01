@@ -43,14 +43,10 @@ bool ctime_interval_r(struct tm* interval, char* buf, size_t len) {
 	return true;
 }
 
-const char* ctime_interval(struct tm* interval) {
-	static char* buf = NULL;
-	static size_t len = 0;
-	if(buf == NULL) {
-		buf = malloc(0x100);
-		len = 0x100;
-	}
+static char* buf;
+static size_t len;
 
+const char* ctime_interval(struct tm* interval) {
 	while(false == ctime_interval_r(interval, buf, len)) {
 		len += 0x100;
 		buf = realloc(buf,len);
@@ -75,4 +71,13 @@ void advance_interval(struct tm* dest, struct tm* interval) {
 
 time_t mymktime(struct tm derp) {
 	return mktime(&derp);
+}
+
+struct tm epoch;
+
+void calendar_init(void) {
+	time_t sigh = 0;
+	gmtime_r(&sigh,&epoch);
+	buf = malloc(0x100);
+	len = 0x100;
 }
