@@ -435,27 +435,33 @@ RUN_RULE:
 		RETRY_RULE:    
 			res = mysystem(cur->command);
 			fflush(stdout);
-			if(!WIFEXITED(res) || 0 != WEXITSTATUS(res)) {
-				warn("exited with %d %s",cur->command,WEXITSTATUS(res),strsignal(WTERMSIG(res)));
-				clock_gettime(CLOCK_REALTIME,&now);
-				if(cur->retried == 0) {
-					time_t a = mktime(&cur->interval);
-					time_t b = mktime(&cur->failing);
-					a = (a+b)>>1; // average leads toward failing w/ every iteration
-					gmtime_r(&a, &cur->interval); 
-					warn("slowing down to %s",ctime_interval(&cur->interval));
-					cur->retried = cur->retries;
-					update_due(cur,&now);
-					goto RUN_RULE;
-				} else {
-					--cur->retried;
-					update_due(cur,&now);
-					goto RUN_RULE;
-				}
-		
-			} else {
-				clock_gettime(CLOCK_REALTIME,&now);
+			if(!WIFEXITED(res)) {
+				warn("died with %d (%s)",WTERMSIG(res),strsignal(WTERMSIG(res)));
+				goto SLOW_DOWN;
+			} else if(0 != WEXITSTATUS(res)) {
+				warn("exited with %d",cur->command,WEXITSTATUS(res));
+				goto SLOW_DOWN;
+			}
+			goto RUN_RULE;
+		SLOW_DOWN:
+			clock_gettime(CLOCK_REALTIME,&now);
+			if(cur->retried == 0) {
+				time_t a = mktime(&cur->interval);
+				time_t b = mktime(&cur->failing);
+				a = (a+b)>>1; // average leads toward failing w/ every iteration
+				gmtime_r(&a, &cur->interval); 
+				warn("slowing down to %s",ctime_interval(&cur->interval));
+				cur->retried = cur->retries;
 				update_due(cur,&now);
+				goto RUN_RULE;
+			} else {
+				--cur->retried;
+				update_due(cur,&now);
+				goto RUN_RULE;
+			}
+		} else {
+			clock_gettime(CLOCK_REALTIME,&now);
+			update_due(cur,&now);
 				goto RUN_RULE;
 			}
 		} else {
