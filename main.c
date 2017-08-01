@@ -436,7 +436,7 @@ RUN_RULE:
 			res = mysystem(cur->command);
 			fflush(stdout);
 			if(!WIFEXITED(res) || 0 != WEXITSTATUS(res)) {
-				warn("exited with %d",cur->command,res);
+				warn("exited with %d %s",cur->command,WEXITSTATUS(res),strsignal(WTERMSIG(res)));
 				clock_gettime(CLOCK_REALTIME,&now);
 				if(cur->retried == 0) {
 					time_t a = mktime(&cur->interval);
