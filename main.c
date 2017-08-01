@@ -263,6 +263,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 			// any n=v pairs now committed to the current rule.
 			// further rules will use the same values unless specified
 			memcpy(ret+which,&default_rule,sizeof(struct rule));
+			info("%d name should have copied %s == %s",which, default_rule.name, ret[which].name);
 			// be sure to transfer ownership of the name pointer. (move semantics)
 			default_rule.name = NULL;
 			ret[which].command = realloc(ret[which].command,eval-sval+1);
