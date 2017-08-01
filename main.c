@@ -295,6 +295,7 @@ const char* shell = NULL;
 int logfd = -1;
 
 int mysystem(const char* command) {
+	// TODO: have a shell process running, and feed it these as lines.
   int pid = fork();
   if(pid == 0) {
     /* TODO: put this in... limits.conf file? idk */
