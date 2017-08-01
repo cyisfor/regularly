@@ -72,3 +72,7 @@ void advance_interval(struct tm* dest, struct tm* interval) {
 #undef ONE
 	info("->%s",asctime(dest));
 }
+
+time_t mymktime(struct tm derp) {
+	return mktime(&derp);
+}
