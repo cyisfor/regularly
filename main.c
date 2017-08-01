@@ -71,7 +71,7 @@ void parse_interval(struct tm* dest,
   };
 	if(!gotzero) {
 		time_t sigh;
-		gmtime_r(&sigh,zero);
+		gmtime_r(&sigh,&zero);
 		gotzero = true;
 	}
 	memcpy(dest,&zero,sizeof(struct tm));
