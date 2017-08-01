@@ -58,8 +58,10 @@ const char* ctime_interval(struct tm* interval) {
 }
 
 void advance_interval(struct tm* dest, struct tm* interval) {
+	info("advancing %s by %s",ctime(dest),ctime_interval(interval));
 #define ONE(what,name)													\
 	dest->tm_ ## what += interval->tm_ ## what;
 	FOR_TM;
 #undef ONE
+	info("->%s",ctime(dest));
 }
