@@ -13,4 +13,6 @@ time_t mymktime(struct tm);
 
 extern struct tm epoch;
 
+time_t interval_secs(struct tm interval);
+
 void calendar_init(void);

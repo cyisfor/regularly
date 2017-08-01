@@ -60,8 +60,9 @@ const char* myctime(time_t t) {
 	return ret;
 }
 
+
 void advance_interval(struct tm* dest, struct tm* interval) {
-	info("advancing %s by %lu %s",myctime(mktime(dest)),mymktime(*interval),ctime_interval(interval));
+	info("advancing %s by %lu %s",myctime(mktime(dest)),intervalsecs(*interval),ctime_interval(interval));
 #define ONE(what,name)													\
 	dest->tm_ ## what += interval->tm_ ## what;
 	FOR_TM;
@@ -70,10 +71,21 @@ void advance_interval(struct tm* dest, struct tm* interval) {
 }
 
 time_t mymktime(struct tm derp) {
+	// mktime sucks
 	return mktime(&derp);
 }
 
 struct tm epoch;
+
+time_t interval_secs(struct tm interval) {
+	// mktime SUCKS
+	struct tm derp = epoch;
+#define ONE(what,name) \
+	derp.tm_ ## what += interval.tm_ ## what;
+	FOR_TM;
+#undef ONE
+	return mktime(derp);
+}
 
 void calendar_init(void) {
 	time_t sigh = 0;
