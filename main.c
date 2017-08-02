@@ -35,7 +35,7 @@ void parse_interval(struct tm* dest,
 	memset(dest,0,sizeof(struct tm));
   while(next_token(&ctx)) {
 		if(ctx.state == SEEKNUM) {
-			advance_interval(dest,&ctx.interval);
+			memcpy(dest,&ctx.interval,sizeof(*dest));
 		}
   }
 }
@@ -194,10 +194,10 @@ struct rule* parse(struct rule* ret, size_t* space) {
 		bool is_a_command(void) {
 			if(sval >= eval) {
 				// newline
-				info("newline");
+				//info("newline");
 				return false;
 			}
-			info("nanewline %d %d",sval,eval);
+			//info("nanewline %d %d",sval,eval);
 			if(!goteq) {
 				--sval; // eq is start, so eq+1 is BAD
 				return true; // it's a command
