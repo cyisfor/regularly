@@ -302,7 +302,7 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 		info("%s: %.4f %d %s",
 				 r->name,
 				 timespecsecs(diff),
-				 interval_secs_from(&now, &r->interval),
+				 interval_secs_from(&now, &r->interval) - now.tv_sec,
 				 interval_tostr(&r->interval));
 	}
 	show(first);
