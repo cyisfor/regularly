@@ -445,7 +445,7 @@ WAIT_FOR_CONFIG:
   }
   goto WAIT_FOR_CONFIG;
 RUN_RULE:
-  { if(num == 0) {
+  { if(space == 0) {
 			warn("All rules disabled");
 			left.tv_sec = 10;
 			left.tv_nsec = 0;
@@ -470,7 +470,7 @@ RUN_RULE:
 				if (0 == WEXITSTATUS(res)) {
 					// okay, it exited fine, update due and run the next rule
 					clock_gettime(CLOCK_REALTIME,&now);
-					update_due_adjust(r,num,0,&now);
+					update_due_adjust(r,space,0,&now);
 					goto RUN_RULE;
 				} else {
 					warn("exited with %hhd",r[0].command,WEXITSTATUS(res));
@@ -485,11 +485,11 @@ RUN_RULE:
 						 interval_secs_from(&now,&r[0].interval),
 						 interval_tostr(&r[0].interval));
 				r[0].retried = r[0].retries;
-				update_due_adjust(r,num,0,&now);
+				update_due_adjust(r,space,0,&now);
 				goto RUN_RULE;
 			} else {
 				--r[0].retried;
-				update_due_adjust(r,num,0,&now);
+				update_due_adjust(r,space,0,&now);
 				goto RUN_RULE;
 			}
 		} else {
@@ -500,7 +500,7 @@ RUN_RULE:
 				left.tv_sec = 1;
 				left.tv_nsec = 0;
 			} 
-			warn("delay is %s? waiting %d",interval_tostr(&r[cur].interval),
+			warn("delay is %s? waiting %d",interval_tostr(&r[0].interval),
 					 left.tv_sec);
 			goto WAIT_FOR_CONFIG; 
 		}  
