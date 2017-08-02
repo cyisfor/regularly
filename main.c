@@ -418,7 +418,9 @@ int main(int argc, char *argv[])
 		inotify_add_watch(ino,".",IN_MOVED_TO|IN_CLOSE_WRITE);
 	} else {
 		logfd = STDOUT_FILENO;
-		inotify_add_watch(ino,dirname(rules_override),IN_MOVED_TO|IN_CLOSE_WRITE);
+		char* csux = strdup(rules_override);
+		inotify_add_watch(ino,dirname(csux),IN_MOVED_TO|IN_CLOSE_WRITE);
+		free(csux);
 	}
 
   things[0].fd = ino;
