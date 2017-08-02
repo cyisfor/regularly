@@ -368,37 +368,6 @@ int mysystem(const char* command) {
   return status;
 }
 
-size_t find_next(struct rule* first, ssize_t num) {
-  size_t i;
-  struct rule* soonest = first;
-	info("Rules found:");
-	struct timespec now;
-	clock_gettime(CLOCK_REALTIME,&now);
-	
-	void show(struct rule* r) {
-		struct timespec diff;
-		timespecsub(&diff, &r->due, &now);
-		info("%s: %.4f %d %s",
-				 r->name,
-				 timespecsecs(diff),
-				 interval_secs_from(&now, &r->interval) - now.tv_sec,
-				 interval_tostr(&r->interval));
-	}
-	show(first);
-  for(i=1;i<num;++i) {
-		show(first+i);
-		if(first[i].disabled == true) continue;
-		if(first[i].due.tv_sec > soonest->due.tv_sec)
-			continue;
-		if(first[i].due.tv_sec == soonest->due.tv_sec &&
-			 first[i].due.tv_nsec > soonest->due.tv_nsec)
-			continue;
-		soonest = first + i;
-  }
-  if(soonest->disabled) return NULL;
-  return soonest;
-}
-
 int main(int argc, char *argv[])
 {
 
