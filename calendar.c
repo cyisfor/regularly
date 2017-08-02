@@ -12,7 +12,7 @@
 	ONE(mon,"month");															\
 	ONE(year,"year");
 
-bool interval_tostr_r(struct tm* interval, char* buf, size_t len) {
+bool interval_tostr_r(const struct tm* interval, char* buf, size_t len) {
 	ssize_t offset = 0;
 	bool first = true;
 #define ONE(what,name)													\
@@ -46,7 +46,7 @@ bool interval_tostr_r(struct tm* interval, char* buf, size_t len) {
 static char* buf;
 static size_t len;
 
-const char* interval_tostr(struct tm* interval) {
+const char* interval_tostr(const struct tm* interval) {
 	while(false == interval_tostr_r(interval, buf, len)) {
 		len += 0x100;
 		buf = realloc(buf,len);
@@ -61,7 +61,7 @@ const char* myctime(time_t t) {
 }
 
 
-void advance_interval(struct tm* dest, struct tm* interval) {
+void advance_interval(struct tm* dest, const struct tm* interval) {
 	info("advancing %s by %lu %s",myctime(mktime(dest)),interval_secs(*interval),interval_tostr(interval));
 #define ONE(what,name)													\
 	dest->tm_ ## what += interval->tm_ ## what;
@@ -75,12 +75,12 @@ time_t mymktime(struct tm derp) {
 	return mktime(&derp);
 }
 
-time_t interval_secs(struct tm interval) {
+time_t interval_secs(const struct tm interval) {
 	struct timespec base = {};
 	return interval_secs_from(base, interval);
 }
 
-time_t interval_secs_from(struct timespec base, struct tm interval) {
+time_t interval_secs_from(const struct timespec base, const struct tm interval) {
 	struct tm now;
 	gmtime_r(&base.tv_sec,&now);
 #define ONE(what,name) \
@@ -95,13 +95,19 @@ void calendar_init(void) {
 	len = 0x100;
 }
 
-void interval_between(struct tm* dest, struct tm a, struct tm b) {
-	#define ONE(what,name) dest->tm_ ## what = (a.tm_ ## what + b.tm_ ## what) / 2
+void interval_between(struct tm* dest, const struct tm* a, const struct tm* b) {
+	#define ONE(what,name) dest->tm_ ## what = (a->tm_ ## what + b->tm_ ## what) / 2
 	FOR_TM;
 	#undef ONE
 }
 
-void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) {
+void interval_mul(struct tm* dest, const struct tm* a, const float factor) {
+	#define ONE(what,name) dest->tm_ ## what = a->tm_ ## what * factor;
+	FOR_TM;
+	#undef
+}
+
+void timespecadd(struct timespec* dest, const struct timespec* a, const struct timespec* b) {
   dest->tv_sec += a->tv_sec + b->tv_sec;
   dest->tv_nsec = a->tv_nsec + b->tv_nsec;
   if(dest->tv_nsec > 1000000000) {
@@ -113,7 +119,7 @@ void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) 
 // only works for unsigned numbers...
 #define MAXOF(a) (unsigned long long int) (-1 | (a))
 
-void timespecmul(struct timespec* src, float factor) {
+void timespecmul(struct timespec* src, const float factor) {
   float nsecs = src->tv_nsec * factor;
   float secs = src->tv_sec * factor;
   if(secs > MAXOF(src->tv_sec)) {
@@ -131,7 +137,7 @@ void timespecmul(struct timespec* src, float factor) {
   src->tv_nsec = nsecs;
 }
 
-void timespecsub(struct timespec* dest, struct timespec* a, struct timespec* b) {
+void timespecsub(struct timespec* dest, const struct timespec* a, const struct timespec* b) {
   bool needborrow = a->tv_nsec < b->tv_nsec;
   dest->tv_sec = a->tv_sec - (needborrow ? 1 : 0) - b->tv_sec;
   dest->tv_nsec = a->tv_nsec + (needborrow ? 1000000000 : 0) - b->tv_nsec;

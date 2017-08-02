@@ -302,7 +302,7 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 		info("%s: %d %d %s",
 				 r->name,
 				 timespecsecs(diff),
-				 interval_secs_from(now, r->interval),
+				 interval_secs_from(&now, &r->interval),
 				 interval_tostr(&r->interval));
 	}
 	show(first);
@@ -434,7 +434,7 @@ RUN_RULE:
 			if(cur->retried == 0) {
 				interval_between(&cur->interval,cur->interval,cur->failing);
 				warn("slowing down to %d %s",
-						 interval_secs_from(now,cur->interval),
+						 interval_secs_from(&now,&cur->interval),
 						 interval_tostr(&cur->interval));
 				cur->retried = cur->retries;
 				update_due(cur,&now);
