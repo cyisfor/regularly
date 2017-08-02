@@ -487,7 +487,7 @@ RUN_RULE:
 			int res;
 			if(r[0].disabled)
 				goto RUN_RULE;
-			warn("running command: %s",r[0].command);
+			warn("running command: %s %s",r[0].name,r[0].command);
 		RETRY_RULE:    
 			res = mysystem(r[0].command);
 			fflush(stdout);
