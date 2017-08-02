@@ -80,11 +80,11 @@ time_t interval_secs(const struct tm interval) {
 	return interval_secs_from(base, interval);
 }
 
-time_t interval_secs_from(const struct timespec base, const struct tm interval) {
+time_t interval_secs_from(const struct timespec* base, const struct tm* interval) {
 	struct tm now;
-	gmtime_r(&base.tv_sec,&now);
+	gmtime_r(&base->tv_sec,&now);
 #define ONE(what,name) \
-	now.tm_ ## what += interval.tm_ ## what;
+	now.tm_ ## what += interval->tm_ ## what;
 	FOR_TM;
 #undef ONE
 	return mktime(&now);
@@ -104,7 +104,7 @@ void interval_between(struct tm* dest, const struct tm* a, const struct tm* b) {
 void interval_mul(struct tm* dest, const struct tm* a, const float factor) {
 	#define ONE(what,name) dest->tm_ ## what = a->tm_ ## what * factor;
 	FOR_TM;
-	#undef
+	#undef ONE
 }
 
 void timespecadd(struct timespec* dest, const struct timespec* a, const struct timespec* b) {

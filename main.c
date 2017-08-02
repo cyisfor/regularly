@@ -432,7 +432,7 @@ RUN_RULE:
 			}
 			clock_gettime(CLOCK_REALTIME,&now);
 			if(cur->retried == 0) {
-				interval_between(&cur->interval,cur->interval,cur->failing);
+				interval_between(&cur->interval,&cur->interval,&cur->failing);
 				warn("slowing down to %d %s",
 						 interval_secs_from(&now,&cur->interval),
 						 interval_tostr(&cur->interval));
