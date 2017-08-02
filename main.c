@@ -13,7 +13,7 @@
 #include <sys/resource.h> // setrlimit
 #include <sys/wait.h> // waitpid
 #include <ctype.h> // isspace
-
+#include <libgen.h> // dirname
 #include <poll.h>
 #include <errno.h>
 #include <stdio.h>
@@ -153,8 +153,15 @@ void update_due_adjust(struct rule* r, size_t num, ssize_t which,
 	sort_adjust(r,num,which);
 }
 
+const char* rules_override = NULL;
+
 struct rule* parse(struct rule* ret, size_t* space) {
-  int fd = open("rules", O_RDONLY);
+  int fd;
+	if(rules_override==NULL) {
+		fd = open("rules", O_RDONLY);
+	} else {
+		fd = open(rules_override, O_RDONLY);
+	}
   if(fd < 0) return NULL;
   struct stat file_info;
   fstat(fd,&file_info);
@@ -396,17 +403,23 @@ int main(int argc, char *argv[])
 			.events = POLLIN
 		} };
   ssize_t amt;
-  
-  me = getpwuid(getuid());
-  assert_zero(chdir(me->pw_dir));
-  assert_zero(chdir(".config"));
-  mkdir("regularly",0700);
-  assert_zero(chdir("regularly"));
-
-	logfd = open("log",O_APPEND|O_WRONLY|O_CREAT,0644);
 
   ino = inotify_init();
-  inotify_add_watch(ino,".",IN_MOVED_TO|IN_CLOSE_WRITE);
+
+	rules_override = getenv("rules");
+  
+	if(NULL==rules_override) {
+		me = getpwuid(getuid());
+		assert_zero(chdir(me->pw_dir));
+		assert_zero(chdir(".config"));
+		mkdir("regularly",0700);
+		assert_zero(chdir("regularly"));
+		logfd = open("log",O_APPEND|O_WRONLY|O_CREAT,0644);
+		inotify_add_watch(ino,".",IN_MOVED_TO|IN_CLOSE_WRITE);
+	} else {
+		logfd = STDOUT_FILENO;
+		inotify_add_watch(ino,dirname(rules_override),IN_MOVED_TO|IN_CLOSE_WRITE);
+	}
 
   things[0].fd = ino;
 
