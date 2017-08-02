@@ -96,7 +96,7 @@ void calendar_init(void) {
 	len = 0x100;
 }
 
-void interval_between(struct timespec* dest, struct timespec a, struct timespec b) {
+void interval_between(struct tm* dest, struct tm a, struct tm b) {
 	#define ONE(what,name) dest->tm_ ## what = (a.tm_ ## what + b.tm_ ## what) / 2
 	FOR_TM;
 	#undef ONE
