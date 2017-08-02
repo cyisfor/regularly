@@ -75,18 +75,19 @@ time_t mymktime(struct tm derp) {
 	return mktime(&derp);
 }
 
-struct tm epoch;
-
 time_t interval_secs(struct tm interval) {
-	return interval_secs_at(epoch, interval);
+	struct timespec base = {};
+	return interval_secs_from(base, interval);
 }
 
-time_t interval_secs_from(struct tm base, struct tm interval) {
+time_t interval_secs_from(struct timespec base, struct tm interval) {
+	struct tm now;
+	gmtime_r(&base.tv_sec,&now);
 #define ONE(what,name) \
-	base.tm_ ## what += interval.tm_ ## what;
+	now.tm_ ## what += interval.tm_ ## what;
 	FOR_TM;
 #undef ONE
-	return mktime(&base);
+	return mktime(&now);
 }
 
 void calendar_init(void) {
