@@ -301,7 +301,7 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 	info("%s: %d %s (%s)",
 			 first[0].name,
 			 interval.tv_sec,
-			 ctime_interval(&intervalderp),
+			 interval_tostr(&intervalderp),
 			 myctime(first[0].due.tv_sec));
 	clock_gettime(CLOCK_REALTIME,&now);
   for(i=1;i<num;++i) {
@@ -312,7 +312,7 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 		info("%s: %d %s (%s)",
 				 first[i].name,
 				 interval.tv_sec,
-				 ctime_interval(&intervalderp),
+				 interval_tostr(&intervalderp),
 				 myctime(first[i].due.tv_sec));
 		if(first[i].disabled == true) continue;
 		if(first[i].due.tv_sec > soonest->due.tv_sec)
@@ -441,7 +441,7 @@ RUN_RULE:
 				interval_between(&cur->interval,cur->interval,cur->failing);
 				warn("slowing down to %d %s",
 						 interval_secs_from(now,cur->interval),
-						 ctime_interval(&cur->interval));
+						 interval_tostr(&cur->interval));
 				cur->retried = cur->retries;
 				update_due(cur,&now);
 				goto RUN_RULE;
@@ -458,7 +458,7 @@ RUN_RULE:
 				left.tv_sec = 1;
 				left.tv_nsec = 0;
 			} 
-			warn("delay is %s? waiting %d",ctime_interval(&cur->interval),
+			warn("delay is %s? waiting %d",interval_tostr(&cur->interval),
 					 left.tv_sec);
 			goto WAIT_FOR_CONFIG; 
 		}  
