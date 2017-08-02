@@ -292,13 +292,6 @@ struct rule* parse(struct rule* ret, size_t* space) {
 
 		if(is_a_command()) {
 			// use sval and eval because might be command= or just a leading =
-
-			if(num%(1<<8)==0) {
-				/* faster to allocate in chunks */
-				size_t old = *space;
-				*space += ((num>>8)+1)<<8;
-				ret = realloc(ret,*space*sizeof(struct rule));
-			}
 			
 			{
 				
@@ -323,7 +316,14 @@ struct rule* parse(struct rule* ret, size_t* space) {
 			memcpy(default_rule.command,s+sval,eval-sval);
 			default_rule.command[eval-sval] = '\0';
 			// we're not gonna mess with shell parsing... just pass to the shell.
-
+			
+			if(num%(1<<8)==0) {
+				/* faster to allocate in chunks */
+				size_t old = *space;
+				*space += ((num>>8)+1)<<8;
+				ret = realloc(ret,*space*sizeof(struct rule));
+			}
+			
 			size_t which;
 			if(getenv("nowait")) {
 				which = num; // all have same sorting key
