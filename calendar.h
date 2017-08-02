@@ -29,9 +29,9 @@ time_t interval_secs_from(struct timespec base, struct tm interval);
 void calendar_init(void);
 void interval_between(struct tm* dest, struct tm a, struct tm b);
 
-void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b);
+void timespecadd(struct timespec* dest, const struct timespec* a, const struct timespec* b);
 void timespecmul(struct timespec* src, float factor);
 // a - b => dest
-void timespecsub(struct timespec* dest, struct timespec* a, struct timespec* b);
+void timespecsub(struct timespec* dest, const struct timespec* a, const struct timespec* b);
 
-
+#define timespecsecs(t) ((t).tv_sec + (t).tv_nsec / 1000000000.0)
