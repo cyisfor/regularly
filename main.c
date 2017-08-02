@@ -23,43 +23,6 @@
 #define WRITELIT(l) WRITE(l,sizeof(l)-1)
 #define NL() fputc('\n',stderr);
 
-void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) {
-  dest->tv_sec += a->tv_sec + b->tv_sec;
-  dest->tv_nsec = a->tv_nsec + b->tv_nsec;
-  if(dest->tv_nsec > 1000000000) {
-		dest->tv_sec += dest->tv_nsec / 1000000000;
-		dest->tv_nsec %= 1000000000;
-  }
-}
-
-// only works for unsigned numbers...
-#define MAXOF(a) (unsigned long long int) (-1 | (a))
-
-void timespecmul(struct timespec* src, float factor) {
-  float nsecs = src->tv_nsec * factor;
-  float secs = src->tv_sec * factor;
-  if(secs > MAXOF(src->tv_sec)) {
-		src->tv_sec = MAXOF(src->tv_sec);
-		return;
-  }
-  while(nsecs > MAXOF(src->tv_nsec)) {
-		if(src->tv_sec == MAXOF(src->tv_sec)) {
-			src->tv_sec = MAXOF(src->tv_sec);
-			return;
-		}
-		++src->tv_sec;
-		nsecs -= 1.0e9;
-  }
-  src->tv_nsec = nsecs;
-}
-
-void timespecsub(struct timespec* dest, struct timespec* a, struct timespec* b) {
-  bool needborrow = a->tv_nsec < b->tv_nsec;
-  dest->tv_sec = a->tv_sec - (needborrow ? 1 : 0) - b->tv_sec;
-  dest->tv_nsec = a->tv_nsec + (needborrow ? 1000000000 : 0) - b->tv_nsec;
-}
-
-
 void parse_interval(struct tm* dest,
 										const char* s,
 										ssize_t len) {
@@ -248,8 +211,9 @@ struct rule* parse(struct rule* ret, size_t* space) {
 			}
 
 			{
-				time_t a = interval_secs(default_rule.interval);
-				time_t b = interval_secs(default_rule.failing);
+				
+				time_t a = interval_secs_from(now, default_rule.interval);
+				time_t b = interval_secs_from(now, default_rule.failing);
 				// sanity check
 				if(b < a) {
 					char normal[0x100];
@@ -473,11 +437,10 @@ RUN_RULE:
 			}
 			clock_gettime(CLOCK_REALTIME,&now);
 			if(cur->retried == 0) {
-				time_t a = interval_secs(cur->interval);
-				time_t b = interval_secs(cur->failing);
-				a = (a+b)>>1; // average leads toward failing w/ every iteration
-				gmtime_r(&a, &cur->interval); 
-				warn("slowing down to %d %s",a,ctime_interval(&cur->interval));
+				interval_between(&cur->interval,cur->interval,cur->failing);
+				warn("slowing down to %d %s",
+						 interval_secs_from(now,cur->interval),
+						 ctime_interval(&cur->interval));
 				cur->retried = cur->retries;
 				update_due(cur,&now);
 				goto RUN_RULE;
