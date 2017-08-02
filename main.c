@@ -291,9 +291,13 @@ int mysystem(const char* command) {
 }
 
 /* sorting strategy:
-	 first, sort according to soonest due
-	 when we update due, bsearch to find spot where it would go in sorting order
+	 first, sort according to soonest due (0 elements)
+	 when we insert, bsearch to find spot where it would go in sorting order
 	 then shift elements right to find a space.
+	 when we update due, bsearch to find, then maybe remove and re-insert
+
+	 or use a 2n+1 rule for efficient heap... 
+	 
 	 Then, soonest will always be element #1 since until due is updated, all
 	 countdown by same time.
 */
