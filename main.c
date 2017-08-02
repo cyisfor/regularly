@@ -294,26 +294,16 @@ struct rule* find_next(struct rule* first, ssize_t num) {
   ssize_t i;
   struct rule* soonest = first;
 	info("Rules found:");
-	struct timespec interval;
-	struct tm intervalderp;
-	struct timespec now;
-	timespecsub(&interval,&first[0].due,&now);
-	info("%s: %d %s (%s)",
-			 first[0].name,
-			 interval.tv_sec,
-			 interval_tostr(&intervalderp),
-			 myctime(first[0].due.tv_sec));
+	void show(struct rule* r) {
+		info("%s: %d %s",
+				 r->name,
+				 interval_secs_from(r->due, r->interval),
+				 interval_tostr(&r->interval));
+	}
+	show(first);
 	clock_gettime(CLOCK_REALTIME,&now);
   for(i=1;i<num;++i) {
-		struct timespec interval;
-		struct tm intervalderp;
-		timespecsub(&interval,&first[i].due,&now);
-		gmtime_r(&interval.tv_sec,&intervalderp);
-		info("%s: %d %s (%s)",
-				 first[i].name,
-				 interval.tv_sec,
-				 interval_tostr(&intervalderp),
-				 myctime(first[i].due.tv_sec));
+		show(first+i);
 		if(first[i].disabled == true) continue;
 		if(first[i].due.tv_sec > soonest->due.tv_sec)
 			continue;
