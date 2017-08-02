@@ -62,7 +62,7 @@ const char* myctime(time_t t) {
 
 
 void advance_interval(struct tm* dest, const struct tm* interval) {
-	info("advancing %s by %lu %s",myctime(mktime(dest)),interval_secs(*interval),interval_tostr(interval));
+	info("advancing %s by %lu %s",myctime(mktime(dest)),interval_secs(interval),interval_tostr(interval));
 #define ONE(what,name)													\
 	dest->tm_ ## what += interval->tm_ ## what;
 	FOR_TM;
@@ -75,9 +75,9 @@ time_t mymktime(struct tm derp) {
 	return mktime(&derp);
 }
 
-time_t interval_secs(const struct tm interval) {
-	struct timespec base = {};
-	return interval_secs_from(base, interval);
+time_t interval_secs(const struct tm* interval) {
+	const struct timespec base = {};
+	return interval_secs_from(&base, interval);
 }
 
 time_t interval_secs_from(const struct timespec* base, const struct tm* interval) {
