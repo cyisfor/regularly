@@ -78,13 +78,15 @@ time_t mymktime(struct tm derp) {
 struct tm epoch;
 
 time_t interval_secs(struct tm interval) {
-	// mktime SUCKS
-	struct tm derp = epoch;
+	return interval_secs_at(epoch, interval);
+}
+
+time_t interval_secs_from(struct tm base, struct tm interval) {
 #define ONE(what,name) \
-	derp.tm_ ## what += interval.tm_ ## what;
+	base.tm_ ## what += interval.tm_ ## what;
 	FOR_TM;
 #undef ONE
-	return mktime(&derp);
+	return mktime(&base);
 }
 
 void calendar_init(void) {
@@ -93,3 +95,46 @@ void calendar_init(void) {
 	buf = malloc(0x100);
 	len = 0x100;
 }
+
+void interval_between(struct timespec* dest, struct timespec a, struct timespec b) {
+	#define ONE(what,name) dest->tm_ ## what = (a.tm_ ## what + b.tm_ ## what) / 2
+	FOR_TM;
+	#undef ONE
+}
+
+void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b) {
+  dest->tv_sec += a->tv_sec + b->tv_sec;
+  dest->tv_nsec = a->tv_nsec + b->tv_nsec;
+  if(dest->tv_nsec > 1000000000) {
+		dest->tv_sec += dest->tv_nsec / 1000000000;
+		dest->tv_nsec %= 1000000000;
+  }
+}
+
+// only works for unsigned numbers...
+#define MAXOF(a) (unsigned long long int) (-1 | (a))
+
+void timespecmul(struct timespec* src, float factor) {
+  float nsecs = src->tv_nsec * factor;
+  float secs = src->tv_sec * factor;
+  if(secs > MAXOF(src->tv_sec)) {
+		src->tv_sec = MAXOF(src->tv_sec);
+		return;
+  }
+  while(nsecs > MAXOF(src->tv_nsec)) {
+		if(src->tv_sec == MAXOF(src->tv_sec)) {
+			src->tv_sec = MAXOF(src->tv_sec);
+			return;
+		}
+		++src->tv_sec;
+		nsecs -= 1.0e9;
+  }
+  src->tv_nsec = nsecs;
+}
+
+void timespecsub(struct timespec* dest, struct timespec* a, struct timespec* b) {
+  bool needborrow = a->tv_nsec < b->tv_nsec;
+  dest->tv_sec = a->tv_sec - (needborrow ? 1 : 0) - b->tv_sec;
+  dest->tv_nsec = a->tv_nsec + (needborrow ? 1000000000 : 0) - b->tv_nsec;
+}
+
