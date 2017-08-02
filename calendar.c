@@ -12,7 +12,7 @@
 	ONE(mon,"month");															\
 	ONE(year,"year");
 
-bool ctime_interval_r(struct tm* interval, char* buf, size_t len) {
+bool interval_tostr_r(struct tm* interval, char* buf, size_t len) {
 	ssize_t offset = 0;
 	bool first = true;
 #define ONE(what,name)													\
@@ -46,8 +46,8 @@ bool ctime_interval_r(struct tm* interval, char* buf, size_t len) {
 static char* buf;
 static size_t len;
 
-const char* ctime_interval(struct tm* interval) {
-	while(false == ctime_interval_r(interval, buf, len)) {
+const char* interval_tostr(struct tm* interval) {
+	while(false == interval_tostr_r(interval, buf, len)) {
 		len += 0x100;
 		buf = realloc(buf,len);
 	}
@@ -62,7 +62,7 @@ const char* myctime(time_t t) {
 
 
 void advance_interval(struct tm* dest, struct tm* interval) {
-	info("advancing %s by %lu %s",myctime(mktime(dest)),interval_secs(*interval),ctime_interval(interval));
+	info("advancing %s by %lu %s",myctime(mktime(dest)),interval_secs(*interval),interval_tostr(interval));
 #define ONE(what,name)													\
 	dest->tm_ ## what += interval->tm_ ## what;
 	FOR_TM;
@@ -91,8 +91,6 @@ time_t interval_secs_from(struct timespec base, struct tm interval) {
 }
 
 void calendar_init(void) {
-	time_t sigh = 0;
-	gmtime_r(&sigh,&epoch);
 	buf = malloc(0x100);
 	len = 0x100;
 }
