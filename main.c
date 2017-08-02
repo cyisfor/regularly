@@ -2,7 +2,7 @@
 #include "errors.h"
 #include "parse.h" // next_token
 #include <time.h>
-#include <string.h> // memcpy
+#include <string.h> // memcpy, memmove
 #include <fcntl.h> // open, O_RDONLY
 #include <sys/stat.h>
 #include <sys/mman.h>
@@ -52,22 +52,93 @@ struct rule {
 	char* name;
 };
 
+/* sorting strategy:
+	 first, sort according to soonest due (0 elements)
+	 when we insert, search for insertion point, then (maybe) realloc, shift up, and insert.
+	 
+	 Then, soonest will always be element #1 since until due is updated, all
+	 countdown by same time.
+*/
+
+static size_t find_point(struct rule* r, size_t num, struct timespec due) {
+	int i = num >> 1;
+	int step = num >> 2;
+	// BINARY search plz
+	while(step > 0 && timespecbefore(r[i],due)) {
+		// it should be higher
+		i += step;
+		step = step >> 1;
+	}
+	while(step > 0 && timespecbefore(due,r[i])) {
+		// should be lower
+		i -= step;
+		step = step >> 1;
+	}
+	return i;
+}
+
+size_t sort_insert(struct rule* r, size_t num, struct timespec due) {
+	size_t i = find_point(r,num,due);
+	// found insertion point. now shift old ones up
+
+	if(i < num) {
+		// assume we've pre-allocated enough space to shift up
+		memmove(r+i,r+i+1,sizeof(*r) * (num-i));
+	}
+
+	// now r[i] is duplicate of r[i+1] so scrap r[i]
+	r[i].due = due;
+	return i; // still needs initialization!
+}
+
+static size_t sort_adjust(struct rule* r, size_t num, size_t which) {
+	// "due" changed on r+which so find its new spot, and shift accordingly
+	int i = find_point(r,num,r[which].due);
+	if(i == which) return i;
+	struct rule T = r[which];
+	if(i < which) {
+		/* 0 1 2 i 4 5 6 which 7 8
+			 save which into T
+			 shift i 4 5 6 up into which
+			 restore T into i
+		*/
+		memmove(r+i,r+i+1,sizeof(*r) * (which-i));
+	} else {
+		/* 0 1 2 which 4 5 6 i 7 8
+			 save which into T
+			 shift 4 5 6 i down into which
+			 restore T into i
+		*/
+		memmove(r+which+1,r+which,sizeof(*r) * (i-which));
+	}
+	r[i] = T;
+	return i;
+}
+
 struct rule default_rule = {
 	.interval = { .tm_hour = 1 },
 	.failing = { .tm_hour = 2 },
 	.retries = 0
 };
 
-void update_due(struct rule* r, struct timespec* base) {
-  // TODO: specify the base from which intervals are calculated
-  struct tm date;
+static void later_time(struct timespec* dest,
+											 const struct tm* interval,
+											 const struct timespec* base) {
+	struct tm date;
   gmtime_r(&base->tv_sec,&date);
-  advance_interval(&date,&r->interval);
-  r->due.tv_sec = mymktime(date) + 1;
-  r->due.tv_nsec = 0;
+  advance_interval(&date,&r[which].interval);
+	r->due.tv_sec = mymktime(date) + 1;
+	r->due.tv_nsec = 0;
 	// have it happen at the BEGINNING of the second, or the END of the second?
 	// or at base->tv_nsec nanoseconds after the second?
 	// end is prettier
+}
+
+void update_due_adjust(struct rule* r, size_t num, ssize_t which,
+												 const struct timespec* base) {
+	/* TODO: specify the base from which intervals are calculated */
+	later_time(&r[which].due, &r[which].interval, base);
+	sort_adjust(r,num,which);
 }
 
 struct rule* parse(struct rule* ret, size_t* space) {
@@ -77,7 +148,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
   fstat(fd,&file_info);
   const char* s = mmap(NULL, file_info.st_size,PROT_READ,MAP_PRIVATE,fd,0);
   assert(s);
-  int which = 0;
+  int num = 0;
   struct timespec now;
   clock_gettime(CLOCK_REALTIME,&now);
   size_t i = 0;
@@ -204,13 +275,13 @@ struct rule* parse(struct rule* ret, size_t* space) {
 		if(is_a_command()) {
 			// use sval and eval because might be command= or just a leading =
 
-			if(which%(1<<8)==0) {
+			if(num%(1<<8)==0) {
 				/* faster to allocate in chunks */
 				size_t old = *space;
-				*space += ((which>>8)+1)<<8;
+				*space += ((num>>8)+1)<<8;
 				ret = realloc(ret,*space*sizeof(struct rule));
 			}
-
+			
 			{
 				
 				time_t a = interval_secs_from(&now, &default_rule.interval);
@@ -229,32 +300,38 @@ struct rule* parse(struct rule* ret, size_t* space) {
 					interval_mul(&default_rule.failing, &default_rule.interval, 2);
 				}
 			}
-			
+
+			default_rule.command = malloc(eval-sval+1);
+			memcpy(default_rule.command,s+sval,eval-sval);
+			default_rule.command[eval-sval] = '\0';
+			// we're not gonna mess with shell parsing... just pass to the shell.
+
+			size_t which;
+			if(getenv("nowait")) {
+				which = num; // all have same sorting key
+				// just make everything due on startup
+				memcpy(&default_rule.due,&now,sizeof(now));
+			} else {
+				later_time(&default_rule.due,default_rule.interval,&now);
+				which = sort_insert(r,num,default_rule.due);
+				memcpy(ret+which,&default_rule,sizeof(struct rule));
+			}
 			// any n=v pairs now committed to the current rule.
 			// further rules will use the same values unless specified
-			memcpy(ret+which,&default_rule,sizeof(struct rule));
+
 			info("%d name should have copied %s == %s",which, default_rule.name, ret[which].name);
 			// be sure to transfer ownership of the name pointer. (move semantics)
 			default_rule.name = NULL;
-			ret[which].command = realloc(ret[which].command,eval-sval+1);
-			memcpy(ret[which].command,s+sval,eval-sval);
-			ret[which].command[eval-sval] = '\0';
-			// we're not gonna mess with shell parsing... just pass to the shell.
-			if(getenv("nowait")) {
-				// just make everything due on startup
-				memcpy(&ret[which].due,&now,sizeof(now));
-			} else {
-				update_due(&ret[which],&now);
-			}
-			++which;
+			default_rule.command = NULL;
+			++num;
 		}
 		++i;
   }
 DONE:
   munmap((void*)s,file_info.st_size);
   // now we don't need the trailing chunk
-  *space = which;
-  ret = realloc(ret,which*sizeof(struct rule));
+  *space = num;
+  ret = realloc(ret,num*sizeof(struct rule));
   return ret;
 }
 
@@ -289,18 +366,6 @@ int mysystem(const char* command) {
   assert(pid == waitpid(pid,&status,0));
   return status;
 }
-
-/* sorting strategy:
-	 first, sort according to soonest due (0 elements)
-	 when we insert, bsearch to find spot where it would go in sorting order
-	 then shift elements right to find a space.
-	 when we update due, bsearch to find, then maybe remove and re-insert
-
-	 or use a 2n+1 rule for efficient heap... 
-	 
-	 Then, soonest will always be element #1 since until due is updated, all
-	 countdown by same time.
-*/
 
 struct rule* find_next(struct rule* first, ssize_t num) {
   ssize_t i;
@@ -410,24 +475,24 @@ WAIT_FOR_CONFIG:
   }
   goto WAIT_FOR_CONFIG;
 RUN_RULE:
-  { struct rule* cur = find_next(r,space);
-		if(cur == NULL) {
+  { ssize_t cur = find_next(r,space);
+		if(cur == -1) {
 			warn("All rules disabled");
 			left.tv_sec = 10;
 			left.tv_nsec = 0;
 			goto WAIT_FOR_CONFIG;
 		}
 		clock_gettime(CLOCK_REALTIME,&now);
-		//warn("cur %d now %d",cur->due.tv_sec,now.tv_sec);
-		if(cur->due.tv_sec <= now.tv_sec ||
-       cur->due.tv_sec == now.tv_sec &&
-			 cur->due.tv_nsec <= now.tv_nsec) {
+		//warn("cur %d now %d",r[cur].due.tv_sec,now.tv_sec);
+		if(r[cur].due.tv_sec <= now.tv_sec ||
+       r[cur].due.tv_sec == now.tv_sec &&
+			 r[cur].due.tv_nsec <= now.tv_nsec) {
 			int res;
-			if(cur->disabled)
+			if(r[cur].disabled)
 				goto RUN_RULE;
-			warn("running command: %s",cur->command);
+			warn("running command: %s",r[cur].command);
 		RETRY_RULE:    
-			res = mysystem(cur->command);
+			res = mysystem(r[cur].command);
 			fflush(stdout);
 			if(WIFSIGNALED(res)) {
 				warn("died with %hhd (%s)",WTERMSIG(res),strsignal(WTERMSIG(res)));
@@ -435,37 +500,37 @@ RUN_RULE:
 				if (0 == WEXITSTATUS(res)) {
 					// okay, it exited fine, update due and run the next rule
 					clock_gettime(CLOCK_REALTIME,&now);
-					update_due(cur,&now);
+					update_due_adjust(r,num,cur,&now);
 					goto RUN_RULE;
 				} else {
-					warn("exited with %hhd",cur->command,WEXITSTATUS(res));
+					warn("exited with %hhd",r[cur].command,WEXITSTATUS(res));
 				}
 			} else {
 				error("command neither exited or died? WTF??? %d",res);
 			}
 			clock_gettime(CLOCK_REALTIME,&now);
-			if(cur->retried == 0) {
-				interval_between(&cur->interval,&cur->interval,&cur->failing);
+			if(r[cur].retried == 0) {
+				interval_between(&r[cur].interval,&r[cur].interval,&r[cur].failing);
 				warn("slowing down to %d %s",
-						 interval_secs_from(&now,&cur->interval),
-						 interval_tostr(&cur->interval));
-				cur->retried = cur->retries;
-				update_due(cur,&now);
+						 interval_secs_from(&now,&r[cur].interval),
+						 interval_tostr(&r[cur].interval));
+				r[cur].retried = r[cur].retries;
+				update_due_adjust(r,num,cur,&now);
 				goto RUN_RULE;
 			} else {
-				--cur->retried;
-				update_due(cur,&now);
+				--r[cur].retried;
+				update_due_adjust(r,num,cur,&now);
 				goto RUN_RULE;
 			}
 		} else {
 			int amt;
-			timespecsub(&left, &cur->due, &now);
+			timespecsub(&left, &r[cur].due, &now);
 			if(left.tv_sec <= 0) {
 				// no waiting less than a second, please
 				left.tv_sec = 1;
 				left.tv_nsec = 0;
 			} 
-			warn("delay is %s? waiting %d",interval_tostr(&cur->interval),
+			warn("delay is %s? waiting %d",interval_tostr(&r[cur].interval),
 					 left.tv_sec);
 			goto WAIT_FOR_CONFIG; 
 		}  
