@@ -31,7 +31,8 @@ void parse_interval(struct tm* dest,
 		.len = len,
   };
 
-	memcpy(dest,&epoch,sizeof(struct tm));
+	// intervals are NOT valid times, gmtime_r(0,&this) makes a different result
+	memset(dest,0,sizeof(struct tm));
   while(next_token(&ctx)) {
 		if(ctx.state == SEEKNUM) {
 			advance_interval(dest,&ctx.interval);

@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
   while(next_token(&ctx)) {
 	fputs("token: ",stdout);
 	fwrite(ctx.s+ctx.start,ctx.tokenlen,1,stdout);
-	printf("| state: %d interval %s\n",ctx.state, ctime_interval(&ctx.interval));
+	printf("| state: %d interval %s\n",ctx.state, interval_tostr(&ctx.interval));
   }
   return 0;
 }

@@ -1,4 +1,4 @@
-cflags=-g -fdiagnostics-color=yes
+cflags=-g -fdiagnostics-color=always	
 ldflags=-g
 rule program
   command = gcc $cflags -o $out $in $ldflags
