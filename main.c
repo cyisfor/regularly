@@ -213,8 +213,8 @@ struct rule* parse(struct rule* ret, size_t* space) {
 
 			{
 				
-				time_t a = interval_secs_from(now, default_rule.interval);
-				time_t b = interval_secs_from(now, default_rule.failing);
+				time_t a = interval_secs_from(&now, &default_rule.interval);
+				time_t b = interval_secs_from(&now, &default_rule.failing);
 				// sanity check
 				if(b < a) {
 					char normal[0x100];
@@ -226,8 +226,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 							 failing,
 							 a,
 							 normal);
-					a = a << 1;
-					gmtime_r(&a,&default_rule.failing);
+					interval_mul(&default_rule.failing, &default_rule.interval, 2);
 				}
 			}
 			
@@ -302,8 +301,8 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 		timespecsub(&diff, &r->due, &now);
 		info("%s: %d %d %s",
 				 r->name,
-				 
-				 interval_secs_from(r->due, r->interval),
+				 timespecsecs(diff),
+				 interval_secs_from(now, r->interval),
 				 interval_tostr(&r->interval));
 	}
 	show(first);
