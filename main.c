@@ -83,7 +83,7 @@ static size_t sort_insert(struct rule* r, size_t num, struct timespec due) {
 
 	if(i < num) {
 		// assume we've pre-allocated enough space to shift up
-		memmove(r+i,r+i+1,sizeof(*r) * (num-i));
+		memmove(r+i+1,r+i,sizeof(*r) * (num-i));
 	}
 
 	// now r[i] is duplicate of r[i+1] so scrap r[i]
@@ -102,14 +102,14 @@ static size_t sort_adjust(struct rule* r, size_t num, size_t which) {
 			 shift i 4 5 6 up into which
 			 restore T into i
 		*/
-		memmove(r+i,r+i+1,sizeof(*r) * (which-i));
+		memmove(r+i+1,r+i,sizeof(*r) * (which-i));
 	} else {
 		/* 0 1 2 which 4 5 6 i 7 8
 			 save which into T
 			 shift 4 5 6 i down into which
 			 restore T into i
 		*/
-		memmove(r+which+1,r+which,sizeof(*r) * (i-which));
+		memmove(r+which,r+which+1,sizeof(*r) * (i-which));
 	}
 	r[i] = T;
 	return i;
