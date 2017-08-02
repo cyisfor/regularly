@@ -35,4 +35,6 @@ void timespecadd(struct timespec* dest, const struct timespec* a, const struct t
 void timespecsub(struct timespec* dest, const struct timespec* a, const struct timespec* b);
 void timespecmul(struct timespec* src, const float factor);
 
+bool timespecbefore(const struct timespec* before,const struct timespec* after);
+								 
 #define timespecsecs(t) ((t).tv_sec + (t).tv_nsec / 1000000000.0)

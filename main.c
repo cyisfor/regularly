@@ -314,6 +314,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 			} else {
 				later_time(&default_rule.due,default_rule.interval,&now);
 				which = sort_insert(r,num,default_rule.due);
+				// eh, copies due twice
 				memcpy(ret+which,&default_rule,sizeof(struct rule));
 			}
 			// any n=v pairs now committed to the current rule.
