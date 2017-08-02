@@ -64,12 +64,12 @@ static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 	int i = num >> 1;
 	int step = num >> 2;
 	// BINARY search plz
-	while(step > 0 && timespecbefore(r[i],due)) {
+	while(step > 0 && timespecbefore(&r[i],&due)) {
 		// it should be higher
 		i += step;
 		step = step >> 1;
 	}
-	while(step > 0 && timespecbefore(due,r[i])) {
+	while(step > 0 && timespecbefore(&due,&r[i])) {
 		// should be lower
 		i -= step;
 		step = step >> 1;
