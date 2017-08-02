@@ -63,12 +63,16 @@ struct rule {
 static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 	assert(num > 0);
 	if(num == 1) return 0;
-	if(num == 2) {
-		if(timespecbefore(&r[0].due,&due)) return 1;
+	int i;
+	if(num < 4) {
+		// binary search doesn't work, or isn't cheaper than linear search
+		for(i=0;i<num;++i) {
+			if(timespecbefore(&due,&r[i].due)) return i;
+		}
 		else return 0;
 	}
 
-	int i = num >> 1;
+	i = num >> 1;
 	int step = num >> 2;
 	// BINARY search plz
 	while(step > 0 && timespecbefore(&r[i].due,&due)) {
