@@ -299,7 +299,7 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 	void show(struct rule* r) {
 		struct timespec diff;
 		timespecsub(&diff, &r->due, &now);
-		info("%s: %d %d %s",
+		info("%s: %.4f %d %s",
 				 r->name,
 				 timespecsecs(diff),
 				 interval_secs_from(&now, &r->interval),
