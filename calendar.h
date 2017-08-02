@@ -24,10 +24,10 @@ time_t mymktime(struct tm);
 
 // secs if the interval is calculated starting at the epoch
 time_t interval_secs(struct tm interval);
-time_t interval_secs_from(struct tm base, struct tm interval);
+time_t interval_secs_from(struct timespec base, struct tm interval);
 
 void calendar_init(void);
-void interval_between(struct timespec* dest, struct timespec a, struct timespec b);
+void interval_between(struct tm* dest, struct tm a, struct tm b);
 
 void timespecadd(struct timespec* dest, struct timespec* a, struct timespec* b);
 void timespecmul(struct timespec* src, float factor);

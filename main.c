@@ -219,8 +219,8 @@ struct rule* parse(struct rule* ret, size_t* space) {
 				if(b < a) {
 					char normal[0x100];
 					char failing[0x100];
-					ctime_interval_r(&default_rule.failing, failing, 0x100);
-					ctime_interval_r(&default_rule.interval, normal, 0x100);
+					interval_tostr_r(&default_rule.failing, failing, 0x100);
+					interval_tostr_r(&default_rule.interval, normal, 0x100);
 					warn("failing set to lower than normal wait time... %d '%s' < %d '%s' adjusting.",
 							 b,
 							 failing,
