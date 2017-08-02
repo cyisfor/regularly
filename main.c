@@ -368,8 +368,8 @@ int mysystem(const char* command) {
   return status;
 }
 
-struct rule* find_next(struct rule* first, ssize_t num) {
-  ssize_t i;
+size_t find_next(struct rule* first, ssize_t num) {
+  size_t i;
   struct rule* soonest = first;
 	info("Rules found:");
 	struct timespec now;
@@ -476,24 +476,24 @@ WAIT_FOR_CONFIG:
   }
   goto WAIT_FOR_CONFIG;
 RUN_RULE:
-  { ssize_t cur = find_next(r,space);
-		if(cur == -1) {
+  { if(num == 0) {
 			warn("All rules disabled");
 			left.tv_sec = 10;
 			left.tv_nsec = 0;
 			goto WAIT_FOR_CONFIG;
 		}
+		
 		clock_gettime(CLOCK_REALTIME,&now);
 		//warn("cur %d now %d",r[cur].due.tv_sec,now.tv_sec);
-		if(r[cur].due.tv_sec <= now.tv_sec ||
-       r[cur].due.tv_sec == now.tv_sec &&
-			 r[cur].due.tv_nsec <= now.tv_nsec) {
+		if(r[0].due.tv_sec <= now.tv_sec ||
+       r[0].due.tv_sec == now.tv_sec &&
+			 r[0].due.tv_nsec <= now.tv_nsec) {
 			int res;
-			if(r[cur].disabled)
+			if(r[0].disabled)
 				goto RUN_RULE;
-			warn("running command: %s",r[cur].command);
+			warn("running command: %s",r[0].command);
 		RETRY_RULE:    
-			res = mysystem(r[cur].command);
+			res = mysystem(r[0].command);
 			fflush(stdout);
 			if(WIFSIGNALED(res)) {
 				warn("died with %hhd (%s)",WTERMSIG(res),strsignal(WTERMSIG(res)));
@@ -501,31 +501,31 @@ RUN_RULE:
 				if (0 == WEXITSTATUS(res)) {
 					// okay, it exited fine, update due and run the next rule
 					clock_gettime(CLOCK_REALTIME,&now);
-					update_due_adjust(r,num,cur,&now);
+					update_due_adjust(r,num,0,&now);
 					goto RUN_RULE;
 				} else {
-					warn("exited with %hhd",r[cur].command,WEXITSTATUS(res));
+					warn("exited with %hhd",r[0].command,WEXITSTATUS(res));
 				}
 			} else {
 				error("command neither exited or died? WTF??? %d",res);
 			}
 			clock_gettime(CLOCK_REALTIME,&now);
-			if(r[cur].retried == 0) {
-				interval_between(&r[cur].interval,&r[cur].interval,&r[cur].failing);
+			if(r[0].retried == 0) {
+				interval_between(&r[0].interval,&r[0].interval,&r[0].failing);
 				warn("slowing down to %d %s",
-						 interval_secs_from(&now,&r[cur].interval),
-						 interval_tostr(&r[cur].interval));
-				r[cur].retried = r[cur].retries;
-				update_due_adjust(r,num,cur,&now);
+						 interval_secs_from(&now,&r[0].interval),
+						 interval_tostr(&r[0].interval));
+				r[0].retried = r[0].retries;
+				update_due_adjust(r,num,0,&now);
 				goto RUN_RULE;
 			} else {
-				--r[cur].retried;
-				update_due_adjust(r,num,cur,&now);
+				--r[0].retried;
+				update_due_adjust(r,num,0,&now);
 				goto RUN_RULE;
 			}
 		} else {
 			int amt;
-			timespecsub(&left, &r[cur].due, &now);
+			timespecsub(&left, &r[0].due, &now);
 			if(left.tv_sec <= 0) {
 				// no waiting less than a second, please
 				left.tv_sec = 1;
