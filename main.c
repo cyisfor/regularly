@@ -64,12 +64,12 @@ static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 	int i = num >> 1;
 	int step = num >> 2;
 	// BINARY search plz
-	while(step > 0 && timespecbefore(&r[i],&due)) {
+	while(step > 0 && timespecbefore(&r[i].due,&due)) {
 		// it should be higher
 		i += step;
 		step = step >> 1;
 	}
-	while(step > 0 && timespecbefore(&due,&r[i])) {
+	while(step > 0 && timespecbefore(&due,&r[i].due)) {
 		// should be lower
 		i -= step;
 		step = step >> 1;
@@ -126,9 +126,9 @@ static void later_time(struct timespec* dest,
 											 const struct timespec* base) {
 	struct tm date;
   gmtime_r(&base->tv_sec,&date);
-  advance_interval(&date,&r[which].interval);
-	r->due.tv_sec = mymktime(date) + 1;
-	r->due.tv_nsec = 0;
+  advance_interval(&date,interval);
+	dest->tv_sec = mymktime(date) + 1;
+	dest->tv_nsec = 0;
 	// have it happen at the BEGINNING of the second, or the END of the second?
 	// or at base->tv_nsec nanoseconds after the second?
 	// end is prettier
