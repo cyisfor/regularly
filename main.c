@@ -297,7 +297,7 @@ struct rule* find_next(struct rule* first, ssize_t num) {
 	struct timespec interval;
 	struct tm intervalderp;
 	struct timespec now;
-	timespecsub(&interval,&first[i].due,&now);
+	timespecsub(&interval,&first[0].due,&now);
 	info("%s: %d %s (%s)",
 			 first[0].name,
 			 interval.tv_sec,
