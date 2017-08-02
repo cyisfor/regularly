@@ -13,25 +13,26 @@
 	 they start at.
 */
 
-bool interval_tostr_r(struct tm* interval, char* dest, size_t limit);
-const char* interval_tostr(struct tm* interval);
+bool interval_tostr_r(const struct tm* interval, char* dest, size_t limit);
+const char* interval_tostr(const struct tm* interval);
 
-void advance_interval(struct tm* dest, struct tm* interval);
+void advance_interval(struct tm* dest, const struct tm* interval);
 
 const char* myctime(time_t t);
 // mktime sucks
 time_t mymktime(struct tm);
 
 // secs if the interval is calculated starting at the epoch
-time_t interval_secs(struct tm interval);
-time_t interval_secs_from(struct timespec base, struct tm interval);
+time_t interval_secs(const struct tm* interval);
+time_t interval_secs_from(const struct timespec* base, const struct tm* interval);
 
 void calendar_init(void);
-void interval_between(struct tm* dest, struct tm a, struct tm b);
+void interval_between(struct tm* dest, const struct tm* a, const struct tm* b);
+void interval_mul(struct tm* dest, const struct tm* a, const float factor);
 
 void timespecadd(struct timespec* dest, const struct timespec* a, const struct timespec* b);
-void timespecmul(struct timespec* src, float factor);
 // a - b => dest
 void timespecsub(struct timespec* dest, const struct timespec* a, const struct timespec* b);
+void timespecmul(struct timespec* src, const float factor);
 
 #define timespecsecs(t) ((t).tv_sec + (t).tv_nsec / 1000000000.0)
