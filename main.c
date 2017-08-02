@@ -289,6 +289,15 @@ int mysystem(const char* command) {
   assert(pid == waitpid(pid,&status,0));
   return status;
 }
+
+/* sorting strategy:
+	 first, sort according to soonest due
+	 when we update due, bsearch to find spot where it would go in sorting order
+	 then shift elements right to find a space.
+	 Then, soonest will always be element #1 since until due is updated, all
+	 countdown by same time.
+*/
+
 struct rule* find_next(struct rule* first, ssize_t num) {
   ssize_t i;
   struct rule* soonest = first;
