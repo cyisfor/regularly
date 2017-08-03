@@ -517,6 +517,7 @@ int main(int argc, char *argv[])
 		mkdir("regularly",0755);
 		assert_zero(chdir("regularly"));
 		mkdir("logs",0755);
+		// to avoid springing inotify every time a child PID closes its logfd
 		logfd = open("logs/log",O_APPEND|O_WRONLY|O_CREAT,0644);
 		inotify_add_watch(ino,".",IN_MOVED_TO|IN_CLOSE_WRITE);
 	} else {
