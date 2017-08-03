@@ -129,7 +129,7 @@ static size_t sort_adjust(struct rule* r, size_t num, size_t which) {
 	r[i] = T;
 	puts("Rules sorted:");
 	for(i=0;i<num;++i) {
-		printf("  %s %s %s\n",
+		printf("  %s (%s) %s\n",
 					 r[i].name,
 					 interval_tostr(&r[i].interval),
 					 myctime(r[i].due.tv_sec));
