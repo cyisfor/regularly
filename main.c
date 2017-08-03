@@ -542,7 +542,7 @@ RUN_RULE:
 			if(left.tv_sec <= 0) {
 				// no time travel, please
 				// less than a second is ok because several may come due at once.
-				left.tv_sec = 0;
+				left.tv_sec = 1;
 				left.tv_nsec = 0;
 			} 
 			warn("delay is %s? waiting %d",interval_tostr(&r[0].interval),
