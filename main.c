@@ -460,6 +460,7 @@ MAYBE_RUN_RULE:
   }
 WAIT_FOR_CONFIG:
 	if(r) {
+		if(left.tv_sec == 0 && left.tv_nsec == 0) goto MAYBE_RUN_RULE;
 		amt = ppoll(things,1,&left,NULL);
 	} else {
 		amt = ppoll(things,1,NULL,NULL);
