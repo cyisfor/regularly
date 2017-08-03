@@ -67,6 +67,14 @@ struct rule {
 static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 	if(num == 0) return 0;
 	int i;
+	puts("Rules found:");
+	for(i=0;i<num;++i) {
+		printf("  %s %s %s\n",
+					 r[i].name,
+					 interval_tostr(&r[i].due,&r[i].interval),
+					 myctime(mymktime(r[i].due)));
+	}
+	puts("-----");
 	if(num < 4) {
 		// binary search doesn't work, or isn't cheaper than linear search
 		for(i=0;i<num;++i) {
