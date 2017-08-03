@@ -611,6 +611,7 @@ RUN_RULE:
 					// okay, it exited fine, update due and run the next rule
 					clock_gettime(CLOCK_REALTIME,&now);
 					update_due_adjust(r,space,0,&now);
+					goto RUN_RULE;
 				} else {
 					warn("exited with %hhd",r[0].command,WEXITSTATUS(res));
 				}
@@ -624,14 +625,13 @@ RUN_RULE:
 						 interval_secs_from(&now,&r[0].interval),
 						 interval_tostr(&r[0].interval));
 				r[0].retried = r[0].retries;
-				update_due_adjust(r,space,0,&now);
 			} else {
 				--r[0].retried;
-				update_due_adjust(r,space,0,&now);
 			}
+			update_due_adjust(r,space,0,&now);
 		} else {
 			goto WAIT_FOR_CONFIG; 
-		}  
+		}
 		goto RUN_RULE;
   }
   return 0;
