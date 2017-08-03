@@ -148,5 +148,6 @@ bool timespecbefore(const struct timespec* before,const struct timespec* after) 
 	if(before->tv_sec < after->tv_sec) return true;
 	if(before->tv_sec == after->tv_sec)
 		if(before->tv_nsec < after->tv_nsec) return true;
-	return false;
+	return before == after; // true unless pointers equal
+//	return false;
 }
