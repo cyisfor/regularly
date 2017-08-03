@@ -206,6 +206,8 @@ void update_due_adjust(struct rule* r, size_t num, ssize_t which,
 		if(out >= 0) {
 			size_t amt = write(out,&r[which].due,sizeof(r[which].due));
 			int closed = close(out);
+			assert(closed == 0);
+			assert(amt == sizeof(r[which].due));
 			if(closed == 0 && amt == sizeof(r[which].due)) {
 				rename("temp",r->name);
 			}
