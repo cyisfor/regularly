@@ -82,20 +82,25 @@ static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 	hi = num-1;
 
 	for(;;) {
+		if(lo+1 == hi) {
+			// then (lo+hi)>>1 == lo
+			// now before lo, after hi, or in between (lo+0,lo+2,lo+1)?
+			if(timespecbefore(&due, &r[lo].due)) {
+				info("before lo %d",lo);
+				return lo;
+			} else if(timespecbefore(&due, &r[hi].due)) {
+				info("in between %d %d",lo,hi);
+				return hi;
+			} else {
+				info("after hi %d",hi+1);
+				return hi+1;
+			}
+		}
+
 		size_t i = (lo+hi)>>1;
 		if(timespecbefore(&due, &r[i].due)) {
 			info("set hi %d→%d %d",hi,i,lo);
 			hi = i;
-			if(lo+1 == hi) {
-				// now before, or after lo?
-				if(timespecbefore(&due, &r[lo].due)) {
-					info("before lo %d",lo);
-					return lo;
-				}
-				info("after lo %d",lo+1);
-				return lo+1;
-			}
-
 		} else if(timespecequal(&due, &r[i].due)) {
 			lo = i;
 			info("point = %d",i);
