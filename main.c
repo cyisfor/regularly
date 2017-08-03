@@ -197,7 +197,7 @@ static void later_time(struct timespec* dest,
 }
 
 void update_due_adjust(struct rule* r, size_t num, ssize_t which,
-												 const struct timespec* base) {
+											 const struct timespec* base) {
 	/* TODO: specify the base from which intervals are calculated */
 	later_time(&r[which].due, &r[which].interval, base);
 	if(r->name) {
