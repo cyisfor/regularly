@@ -398,7 +398,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 					if(default_rule.name) {
 						// maybe deserialize
 						chdir("dues");
-						int in = open(dues,default_rule.name,O_RDONLY);
+						int in = open(default_rule.name,O_RDONLY);
 						chdir("..");
 						if(in >= 0) {
 							if(
