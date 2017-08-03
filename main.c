@@ -156,6 +156,7 @@ static size_t sort_adjust(struct rule* r, size_t num, size_t which) {
 			 restore T into i
 		*/
 		memmove(r+i+1,r+i,sizeof(*r) * (which-i));
+		++i;
 	} else {
 		/* 0 1 2 which 4 5 6 i 7 8
 			 save which into T
@@ -163,6 +164,7 @@ static size_t sort_adjust(struct rule* r, size_t num, size_t which) {
 			 restore T into i
 		*/
 		memmove(r+which,r+which+1,sizeof(*r) * (i-which));
+		--i;
 	}
 	show_rules(r,num);
 	info("going in %d",i);
