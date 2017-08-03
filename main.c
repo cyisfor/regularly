@@ -200,6 +200,18 @@ void update_due_adjust(struct rule* r, size_t num, ssize_t which,
 												 const struct timespec* base) {
 	/* TODO: specify the base from which intervals are calculated */
 	later_time(&r[which].due, &r[which].interval, base);
+	if(r->name) {
+		chdir("dues");
+		int out = open(".temp",O_WRONLY|O_CREAT,0644);
+		if(out >= 0) {
+			size_t amt = write(out,&r[which].due,sizeof(r[which].due));
+			int closed = close(out);
+			if(closed == 0 && amt == sizeof(r[which].due)) {
+				rename("temp",r->name);
+			}
+		}
+		chdir("..");
+	}
 	sort_adjust(r,num,which);
 }
 
@@ -368,6 +380,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 			default_rule.command[eval-sval] = '\0';
 			// we're not gonna mess with shell parsing... just pass to the shell.
 			
+
 			if(num%(1<<8)==0) {
 				/* faster to allocate in chunks */
 				size_t old = *space;
@@ -381,12 +394,25 @@ struct rule* parse(struct rule* ret, size_t* space) {
 				// just make everything due on startup
 				memcpy(&default_rule.due,&now,sizeof(now));
 			} else {
-				later_time(&default_rule.due,&default_rule.interval,&now);
-				which = sort_insert(ret,num,default_rule.due);
-				// eh, copies due twice
+				void setdue() {
+					if(default_rule.name) {
+						// maybe deserialize
+						chdir("dues");
+						int in = open(dues,default_rule.name,O_RDONLY);
+						chdir("..");
+						if(in >= 0) {
+							if(
+								sizeof(default_rule.due) ==
+								read(in, &default_rule.due, sizeof(default_rule.due)))
+								return;
+						}
+					}
+					later_time(&default_rule.due,&default_rule.interval,&now);
+					which = sort_insert(ret,num,default_rule.due);
+					// eh, copies due twice
+				}
 			}
 			memcpy(ret+which,&default_rule,sizeof(struct rule));
-
 
 			// any n=v pairs now committed to the current rule.
 			// further rules will use the same values unless specified
