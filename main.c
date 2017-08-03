@@ -537,7 +537,6 @@ MAYBE_RUN_RULE:
 		left.tv_nsec = 0;
   }
 WAIT_FOR_CONFIG:
-	show_rules(r,space);
 	if(r) {
 		if(left.tv_sec == 0 && left.tv_nsec == 0) goto MAYBE_RUN_RULE;
 		amt = ppoll(things,1,&left,NULL);
@@ -624,7 +623,8 @@ RUN_RULE:
 				left.tv_sec = 1;
 				left.tv_nsec = 0;
 			} 
-			warn("delay is %s? waiting %d",interval_tostr(&r[0].interval),
+			warn("delay is %s? waiting %d",
+					 interval_tostr(&r[0].interval),
 					 left.tv_sec);
 			goto WAIT_FOR_CONFIG; 
 		}  
