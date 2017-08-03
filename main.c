@@ -514,7 +514,7 @@ int main(int argc, char *argv[])
 		me = getpwuid(getuid());
 		assert_zero(chdir(me->pw_dir));
 		assert_zero(chdir(".config"));
-		mkdir("regularly",0700);
+		mkdir("regularly",0755);
 		assert_zero(chdir("regularly"));
 		mkdir("logs",0755);
 		logfd = open("logs/log",O_APPEND|O_WRONLY|O_CREAT,0644);
