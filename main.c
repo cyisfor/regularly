@@ -496,6 +496,7 @@ MAYBE_RUN_RULE:
 		left.tv_nsec = 0;
   }
 WAIT_FOR_CONFIG:
+	show_rules(r,num);
 	if(r) {
 		if(left.tv_sec == 0 && left.tv_nsec == 0) goto MAYBE_RUN_RULE;
 		amt = ppoll(things,1,&left,NULL);
