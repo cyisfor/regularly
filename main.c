@@ -159,7 +159,7 @@ static size_t sort_adjust(struct rule* r, size_t num, size_t which) {
 		memmove(r+which,r+which+1,sizeof(*r) * (i-which));
 	}
 	show_rules(r,num);
-	printf("going in %d\n",i);
+	info("going in %d",i);
 	r[i] = T;
 	show_rules(r,num);
 	return i;
