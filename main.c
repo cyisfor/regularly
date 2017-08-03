@@ -84,7 +84,7 @@ static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 		i += step;
 		step = step >> 1;
 	}
-	while(step > 0 && timespecbefore(&due,&r[i].due)) {
+	while(step > 0 && (!timespecbefore(&r[i].due,&due))) {
 		// should be lower
 		i -= step;
 		step = step >> 1;
