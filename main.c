@@ -126,14 +126,18 @@ static size_t sort_insert(struct rule* r, size_t num, struct timespec due) {
 }
 
 static void show_rules(struct rule* r, size_t num) {
+	struct timespec now;
+	clock_gettime(CLOCK_REALTIME,&now);
 	int i;
 	puts("Rules:");
 	for(i=0;i<num;++i) {
-		printf("  %d: %s (%s) %s\n",
+		struct timespec left;
+		timespecsub(&left, &r[i].due, &now);
+		printf("  %d: %s (%s) %d\n",
 					 i,
 					 r[i].name,
 					 interval_tostr(&r[i].interval),
-					 myctime(r[i].due.tv_sec));
+					 left.tv_sec);
 	}
 	puts("-----");
 }
