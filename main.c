@@ -459,7 +459,11 @@ MAYBE_RUN_RULE:
 		left.tv_nsec = 0;
   }
 WAIT_FOR_CONFIG:
-  amt = ppoll(things,1,&left,NULL);
+	if(r) {
+		amt = ppoll(things,1,&left,NULL);
+	} else {
+		amt = ppoll(things,1,NULL,NULL);
+	}
   if(amt == 0) {
 		// no things (no config updates) so we're golden.
 		goto MAYBE_RUN_RULE;
@@ -535,8 +539,9 @@ RUN_RULE:
 			int amt;
 			timespecsub(&left, &r[0].due, &now);
 			if(left.tv_sec <= 0) {
-				// no waiting less than a second, please
-				left.tv_sec = 1;
+				// no time travel, please
+				// less than a second is ok because several may come due at once.
+				left.tv_sec = 0;
 				left.tv_nsec = 0;
 			} 
 			warn("delay is %s? waiting %d",interval_tostr(&r[0].interval),
