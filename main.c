@@ -202,14 +202,15 @@ void update_due_adjust(struct rule* r, size_t num, ssize_t which,
 	later_time(&r[which].due, &r[which].interval, base);
 	if(r->name) {
 		chdir("dues");
-		int out = open(".temp",O_WRONLY|O_CREAT,0644);
+		char temp[] = ".tempXXXXXX";
+		int out = mkstemp(temp);
 		if(out >= 0) {
 			size_t amt = write(out,&r[which].due,sizeof(r[which].due));
 			int closed = close(out);
 			assert(closed == 0);
 			assert(amt == sizeof(r[which].due));
 			if(closed == 0 && amt == sizeof(r[which].due)) {
-				assert(0==rename(".temp",r->name));
+				assert(0==rename(temp,r->name));
 			}
 		}
 		chdir("..");
