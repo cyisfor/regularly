@@ -88,6 +88,7 @@ static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 			lo = i;
 			if(lo + 1 == hi) break;
 		} else if(timespecequal(&r[i].due,&due)) {
+			lo = i;
 			break;
 		} else {
 			info("point ↑ %d→%d",hi,i);
