@@ -352,6 +352,8 @@ struct rule* parse(struct rule* ret, size_t* space) {
 				// eh, copies due twice
 			}
 			memcpy(ret+which,&default_rule,sizeof(struct rule));
+			show_rules(ret,num);
+
 
 			// any n=v pairs now committed to the current rule.
 			// further rules will use the same values unless specified
@@ -369,7 +371,6 @@ DONE:
   // now we don't need the trailing chunk
   *space = num;
   ret = realloc(ret,num*sizeof(struct rule));
-	show_rules(ret,num);
   return ret;
 }
 
