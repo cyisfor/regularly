@@ -352,7 +352,6 @@ struct rule* parse(struct rule* ret, size_t* space) {
 				// eh, copies due twice
 			}
 			memcpy(ret+which,&default_rule,sizeof(struct rule));
-			show_rules(ret,num);
 
 
 			// any n=v pairs now committed to the current rule.
@@ -363,6 +362,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 			default_rule.name = NULL;
 			default_rule.command = NULL;
 			++num;
+			show_rules(ret,num);
 		}
 		++i;
   }
