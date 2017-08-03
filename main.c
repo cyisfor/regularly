@@ -501,6 +501,8 @@ int main(int argc, char *argv[])
 		free(csux);
 	}
 
+	mkdir("dues",0755);
+
   things[0].fd = ino;
 
   /*shell = me->pw_shell;
