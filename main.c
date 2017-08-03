@@ -414,6 +414,7 @@ struct rule* parse(struct rule* ret, size_t* space) {
 					which = sort_insert(ret,num,default_rule.due);
 					// eh, copies due twice
 				}
+				setdue();
 			}
 			memcpy(ret+which,&default_rule,sizeof(struct rule));
 
