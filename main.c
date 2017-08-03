@@ -92,7 +92,7 @@ static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 					info("before lo %d",lo-1);
 					return lo-1;
 				}
-				info("after lo %d",lo-1);
+				info("after lo %d",lo);
 				return lo;
 			}
 
