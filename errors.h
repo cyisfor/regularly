@@ -2,7 +2,7 @@ void error(const char* s, ...);
 void warn(const char* s, ...);
 
 #ifdef SILENT_INFO
-#define info(...) __VA_ARGS__
+#define info(...)
 #else
 void info(const char* s, ...);
 #endif
