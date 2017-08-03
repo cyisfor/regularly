@@ -82,7 +82,13 @@ static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 	hi = num-1;
 
 	for(;;) {
-		size_t i = (lo+hi)/2;
+		if(lo+1 == hi) {
+			// stop condition... integer division screws up if this is true
+			if(timespecbefore(&r[lo].due,&due)) 
+				return lo;
+			return hi;
+		}
+		size_t i = (lo+hi)>>1;
 		if(timespecbefore(&r[i].due,&due)) {
 			info("point ↓ %d→%d",lo,i);
 			lo = i;
