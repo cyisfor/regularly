@@ -82,12 +82,8 @@ static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 	hi = num-1;
 
 	for(;;) {
-		if(lo+1 == hi) {
+
 			// stop condition... integer division screws up if this is true
-			if(timespecbefore(&due, &r[lo].due)) {
-				info("picked hi %d",hi);
-				return hi;
-			}
 			info("picked lo %d",lo);
 			return lo;
 		}
@@ -95,6 +91,16 @@ static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 		if(timespecbefore(&r[i].due,&due)) {
 			info("point ↑ %d→%d",hi,i);
 			hi = i;
+			if(lo+1 == hi) {
+				// now before, or after lo?
+				if(timespecbefore(&due, &r[lo].due)) {
+					info("before lo %d",lo-1);
+					return lo-1;
+				}
+				info("after lo %d",lo-1);
+				return lo;
+			}
+
 		} else if(timespecequal(&r[i].due,&due)) {
 			lo = i;
 			info("point = %d",i);
@@ -102,6 +108,15 @@ static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 		} else {
 			info("point ↓ %d→%d",lo,i);
 			lo = i;
+			if(lo+1 == hi) {
+				// now before, or after hi?
+				if(timespecbefore(&due, &r[hi].due)) {
+					info("before hi %d",hi);
+					return hi;
+				}
+				info("after hi %d",hi+1);
+				return hi;
+			}
 		}
 	}
 	return lo;
