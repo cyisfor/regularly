@@ -89,11 +89,11 @@ static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 			if(lo+1 == hi) {
 				// now before, or after lo?
 				if(timespecbefore(&due, &r[lo].due)) {
-					info("before lo %d",lo-1);
-					return lo-1;
+					info("before lo %d",lo);
+					return lo;
 				}
-				info("after lo %d",lo);
-				return lo;
+				info("after lo %d",lo+1);
+				return lo+1;
 			}
 
 		} else if(timespecequal(&due, &r[i].due)) {
