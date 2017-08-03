@@ -411,10 +411,10 @@ struct rule* parse(struct rule* ret, size_t* space) {
 						}
 					}
 					later_time(&default_rule.due,&default_rule.interval,&now);
-					which = sort_insert(ret,num,default_rule.due);
 					// eh, copies due twice
 				}
 				setdue();
+				which = sort_insert(ret,num,default_rule.due);
 			}
 			memcpy(ret+which,&default_rule,sizeof(struct rule));
 
