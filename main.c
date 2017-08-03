@@ -420,7 +420,7 @@ int main(int argc, char *argv[])
 		logfd = open("log",O_APPEND|O_WRONLY|O_CREAT,0644);
 		inotify_add_watch(ino,".",IN_MOVED_TO|IN_CLOSE_WRITE);
 	} else {
-		logfd = STDOUT_FILENO;
+		logfd = STDERR_FILENO;
 		char* csux = strdup(rules_override);
 		inotify_add_watch(ino,dirname(csux),IN_MOVED_TO|IN_CLOSE_WRITE);
 		free(csux);
