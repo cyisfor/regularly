@@ -133,7 +133,7 @@ static void show_rules(struct rule* r, size_t num) {
 	for(i=0;i<num;++i) {
 		struct timespec left;
 		timespecsub(&left, &r[i].due, &now);
-		printf("  %d: %s (%s) %.4d\n",
+		printf("  %d: %s (%s) %.4f\n",
 					 i,
 					 r[i].name,
 					 interval_tostr(&r[i].interval),
