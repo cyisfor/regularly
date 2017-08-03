@@ -516,7 +516,8 @@ int main(int argc, char *argv[])
 		assert_zero(chdir(".config"));
 		mkdir("regularly",0700);
 		assert_zero(chdir("regularly"));
-		logfd = open("log",O_APPEND|O_WRONLY|O_CREAT,0644);
+		mkdir("logs",0755);
+		logfd = open("logs/log",O_APPEND|O_WRONLY|O_CREAT,0644);
 		inotify_add_watch(ino,".",IN_MOVED_TO|IN_CLOSE_WRITE);
 	} else {
 		logfd = STDERR_FILENO;
