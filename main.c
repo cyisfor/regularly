@@ -65,7 +65,9 @@ struct rule {
 	 so check e,f,etc. not e, so insert before e (i.e. do nothing)
 */
 static size_t find_point(struct rule* r, size_t num, struct timespec due) {
-	printf("find point %d %s\n",num,myctime(due.tv_sec));
+	struct timespec now;
+	clock_gettime(CLOCK_REALTIME,&now);
+	printf("find point %d %s\n",num,due.tv_sec-now.tv_sec);
 	if(num == 0) return 0;
 	if(num < 4) {
 		int i;
