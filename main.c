@@ -112,7 +112,8 @@ static void show_rules(struct rule* r, size_t num) {
 	int i;
 	puts("Rules:");
 	for(i=0;i<num;++i) {
-		printf("  %s (%s) %s\n",
+		printf("  %d: %s (%s) %s\n",
+					 i,
 					 r[i].name,
 					 interval_tostr(&r[i].interval),
 					 myctime(r[i].due.tv_sec));
