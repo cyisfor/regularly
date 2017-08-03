@@ -127,9 +127,6 @@ static size_t sort_insert(struct rule* r, size_t num, struct timespec due) {
 	return i; // still needs initialization!
 }
 
-#ifdef SILENT_INFO
-#define show_rules(...)
-#else
 static void show_rules(struct rule* r, size_t num) {
 	struct timespec now;
 	clock_gettime(CLOCK_REALTIME,&now);
@@ -146,7 +143,6 @@ static void show_rules(struct rule* r, size_t num) {
 	}
 	puts("-----");
 }
-#endif
 
 static size_t sort_adjust(struct rule* r, size_t num, size_t which) {
 	// "due" changed on r+which so find its new spot, and shift accordingly
@@ -170,10 +166,14 @@ static size_t sort_adjust(struct rule* r, size_t num, size_t which) {
 		memmove(r+which,r+which+1,sizeof(*r) * (i-which));
 		--i;
 	}
+#ifndef SILENT_INFO
 	show_rules(r,num);
 	info("going in %d",i);
+#endif
 	r[i] = T;
+#ifndef SILENT_INFO
 	show_rules(r,num);
+#endif
 	return i;
 }
 
@@ -429,7 +429,9 @@ struct rule* parse(struct rule* ret, size_t* space) {
 			default_rule.name = NULL;
 			default_rule.command = NULL;
 			++num;
+#ifndef SILENT_INFO
 			show_rules(ret,num);
+#endif
 		}
 		++i;
   }
