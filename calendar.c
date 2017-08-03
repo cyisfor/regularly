@@ -151,3 +151,7 @@ bool timespecbefore(const struct timespec* before,const struct timespec* after) 
 	return before == after; // true unless pointers equal
 //	return false;
 }
+
+bool timespecequal(const struct timespec* a,const struct timespec* b) {
+	return a->tv_sec == b->tv_sec && a->tv_nsec == b->tv_nsec;
+}
