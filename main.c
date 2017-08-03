@@ -106,6 +106,18 @@ static size_t sort_insert(struct rule* r, size_t num, struct timespec due) {
 	return i; // still needs initialization!
 }
 
+static void show_rules(struct rule* r, size_t num) {
+	int i;
+	puts("Rules:");
+	for(i=0;i<num;++i) {
+		printf("  %s (%s) %s\n",
+					 r[i].name,
+					 interval_tostr(&r[i].interval),
+					 myctime(r[i].due.tv_sec));
+	}
+	puts("-----");
+}
+
 static size_t sort_adjust(struct rule* r, size_t num, size_t which) {
 	// "due" changed on r+which so find its new spot, and shift accordingly
 	int i = find_point(r,num,r[which].due);
@@ -127,14 +139,7 @@ static size_t sort_adjust(struct rule* r, size_t num, size_t which) {
 		memmove(r+which,r+which+1,sizeof(*r) * (i-which));
 	}
 	r[i] = T;
-	puts("Rules sorted:");
-	for(i=0;i<num;++i) {
-		printf("  %s (%s) %s\n",
-					 r[i].name,
-					 interval_tostr(&r[i].interval),
-					 myctime(r[i].due.tv_sec));
-	}
-	puts("-----");
+	show_rules(r,num);
 	return i;
 }
 
@@ -364,6 +369,7 @@ DONE:
   // now we don't need the trailing chunk
   *space = num;
   ret = realloc(ret,num*sizeof(struct rule));
+	show_rules(ret,num);
   return ret;
 }
 
