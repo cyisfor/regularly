@@ -67,7 +67,7 @@ struct rule {
 static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 	struct timespec now;
 	clock_gettime(CLOCK_REALTIME,&now);
-	printf("find point %d %s\n",num,due.tv_sec-now.tv_sec);
+	printf("find point %d %d\n",num,due.tv_sec-now.tv_sec);
 	if(num == 0) return 0;
 	if(num < 4) {
 		int i;
