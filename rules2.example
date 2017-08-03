@@ -1,0 +1,9 @@
+name = foo
+wait = 10 seconds
+echo foo
+wait = 20 seconds 
+name = bar
+echo bar
+wait = 11 seconds
+name = po
+echo ponka
