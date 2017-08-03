@@ -127,6 +127,9 @@ static size_t sort_insert(struct rule* r, size_t num, struct timespec due) {
 	return i; // still needs initialization!
 }
 
+#ifdef SILENT_INFO
+#define show_rules(...)
+#else
 static void show_rules(struct rule* r, size_t num) {
 	struct timespec now;
 	clock_gettime(CLOCK_REALTIME,&now);
@@ -143,6 +146,7 @@ static void show_rules(struct rule* r, size_t num) {
 	}
 	puts("-----");
 }
+#endif
 
 static size_t sort_adjust(struct rule* r, size_t num, size_t which) {
 	// "due" changed on r+which so find its new spot, and shift accordingly
