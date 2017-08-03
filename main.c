@@ -71,7 +71,7 @@ static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 	for(i=0;i<num;++i) {
 		printf("  %s %s %s\n",
 					 r[i].name,
-					 interval_tostr(&r[i].due,&r[i].interval),
+					 interval_tostr(&r[i].interval),
 					 myctime(mymktime(r[i].due)));
 	}
 	puts("-----");
