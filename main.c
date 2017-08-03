@@ -485,6 +485,21 @@ int main(int argc, char *argv[])
   struct rule* r = NULL;
   size_t space = 0;
   struct timespec now,left;
+
+	void setleft() {
+		timespecsub(&left, &r[0].due, &now);
+		if(left.tv_sec <= 0) {
+			// no time travel, please
+			// less than a second is ok because several may come due at once.
+			left.tv_sec = 1;
+			left.tv_nsec = 0;
+		}
+		warn("delay is %s? waiting %d",
+				 interval_tostr(&r[0].interval),
+				 left.tv_sec);
+	}
+
+	
   struct pollfd things[1] = { {
 			.fd = -1,
 			.events = POLLIN
@@ -538,6 +553,7 @@ MAYBE_RUN_RULE:
   }
 WAIT_FOR_CONFIG:
 	if(r) {
+		setleft();
 		if(left.tv_sec == 0 && left.tv_nsec == 0) goto MAYBE_RUN_RULE;
 		amt = ppoll(things,1,&left,NULL);
 	} else {
@@ -615,17 +631,6 @@ RUN_RULE:
 				goto RUN_RULE;
 			}
 		} else {
-			int amt;
-			timespecsub(&left, &r[0].due, &now);
-			if(left.tv_sec <= 0) {
-				// no time travel, please
-				// less than a second is ok because several may come due at once.
-				left.tv_sec = 1;
-				left.tv_nsec = 0;
-			} 
-			warn("delay is %s? waiting %d",
-					 interval_tostr(&r[0].interval),
-					 left.tv_sec);
 			goto WAIT_FOR_CONFIG; 
 		}  
 		error("should never get here!");
