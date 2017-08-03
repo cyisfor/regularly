@@ -209,7 +209,7 @@ void update_due_adjust(struct rule* r, size_t num, ssize_t which,
 			assert(closed == 0);
 			assert(amt == sizeof(r[which].due));
 			if(closed == 0 && amt == sizeof(r[which].due)) {
-				rename("temp",r->name);
+				assert(0==rename("temp",r->name));
 			}
 		}
 		chdir("..");
