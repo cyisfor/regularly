@@ -96,7 +96,7 @@ static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 		}
 	}
 	return lo;
-
+}
 static size_t sort_insert(struct rule* r, size_t num, struct timespec due) {
 	size_t i = find_point(r,num,due);
 	// found insertion point. now shift old ones up
