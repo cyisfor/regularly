@@ -67,8 +67,8 @@ struct rule {
 static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 	printf("find point %d\n",num);
 	if(num == 0) return 0;
-	int i;
 	if(num < 4) {
+		int i;
 		// binary search doesn't work, or isn't cheaper than linear search
 		for(i=0;i<num;++i) {
 			if(timespecbefore(&due,&r[i].due)) return i;
@@ -77,18 +77,32 @@ static size_t find_point(struct rule* r, size_t num, struct timespec due) {
 		return num;
 	}
 
-	i = num >> 1;
-	int step = num >> 2;
-	// BINARY search plz
-	while(step > 0 && timespecbefore(&r[i].due,&due)) {
-		// it should be higher
-		info("point ↑ %d+%d",i,step);
+	size_t lo, hi;
+	lo = 0;
+	hi = num-1;
+
+	for(;;) {
+		size_t i = (lo+hi)/2;
+		if(timespecbefore(&r[i].due,&due)) {
+			info("point ↓ %d→%d",lo,i);
+			lo = i;
+			if(lo == hi) break;
+		} else if(timespecequal(&r[i].due,&due)) {
+			break;
+		} else {
+			info("point ↑ %d→%d",hi,i);
+			hi = i;
+			if(lo == hi) break;
+		}
+	}
+	return lo;
+
+
 		i += step;
 		step = step >> 1;
 	}
 	while(step > 0 && (!timespecbefore(&r[i].due,&due))) {
 		// should be lower
-		info("point ↓ %d-%d",i,step);
 		i -= step;
 		step = step >> 1;
 	}
