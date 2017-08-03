@@ -147,7 +147,7 @@ static void show_rules(struct rule* r, size_t num) {
 static size_t sort_adjust(struct rule* r, size_t num, size_t which) {
 	// "due" changed on r+which so find its new spot, and shift accordingly
 	int i = find_point(r,num,r[which].due);
-	//if(i == which) return i;
+	if(i == which) return i;
 	struct rule T = r[which];
 	if(i < which) {
 		/* 0 1 2 i 4 5 6 which 7 8
